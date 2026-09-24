@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard PIC Racking - Rak A01</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse untuk membaca CSV GSheet -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        .modal-body-scroll {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans antialiased text-slate-800">
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header Utama -->
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="bg-blue-50 text-blue-600 border border-blue-100 text-xs font-semibold px-2.5 py-0.5 rounded-full">Monitoring Operasional Gudang</span>
+                    <span class="bg-emerald-50 text-emerald-600 text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> Live Sync
+                    </span>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-900 mt-1">Dashboard PIC Racking: Rak A01</h1>
+                <p class="text-sm text-slate-500">Penanggung Jawab: <span class="font-semibold text-slate-700">Arik Koswara</span></p>
+            </div>
+            <div class="mt-4 md:mt-0 text-right">
+                <p class="text-xs text-slate-400">Pembaruan Terakhir</p>
+                <p id="last-update" class="text-sm font-semibold text-slate-700">-</p>
+            </div>
+        </header>
+
+        <!-- Kartu Ringkasan (KPI Cards) -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Inspeksi</p>
+                <div class="flex items-baseline justify-between mt-2">
+                    <h3 id="total-inspeksi" class="text-3xl font-extrabold text-slate-900">0</h3>
+                    <span class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">Semua Shift</span>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Inspeksi Terakhir</p>
+                <div class="flex items-baseline justify-between mt-2">
+                    <h3 id="last-date" class="text-lg font-bold text-blue-600">-</h3>
+                    <span id="last-shift" class="text-xs font-medium text-slate-500 bg-blue-50 text-blue-700 px-2 py-0.5 rounded">-</span>
+                </div>
+            </div>
+            <!-- Kartu Temuan Produk Penyok (Klik untuk Detail) -->
+            <div onclick="openPenyokModal()" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-amber-300 hover:shadow-md transition group flex flex-col justify-between">
+                <div class="flex justify-between items-center">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-amber-600 transition">Temuan Produk Penyok</p>
+                    <span class="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded font-bold">Klik Detail</span>
+                </div>
+                <div class="flex items-baseline justify-between mt-2">
+                    <h3 id="count-penyok" class="text-3xl font-extrabold text-amber-600">0</h3>
+                    <span class="text-xs text-amber-600/80">Status "Ya"</span>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Frekuensi Auto-Refresh</p>
+                <div class="flex items-baseline justify-between mt-2">
+                    <h3 class="text-2xl font-bold text-slate-700">10 Detik</h3>
+                    <span class="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded">Aktif</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Filter Rentang Tanggal yang Profesional -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
+            <div>
+                <h3 class="font-bold text-slate-800 text-sm">Filter Grafik Berdasarkan Tanggal</h3>
+                <p class="text-xs text-slate-500">Pilih rentang waktu atau gunakan tombol cepat di samping</p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <!-- Tombol Pintas Cepat -->
+                <button onclick="setQuickDate('7days')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">7 Hari Terakhir</button>
+                <button onclick="setQuickDate('thisMonth')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Bulan Ini</button>
+                <button onclick="resetDateFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Semua Data</button>
+                
+                <div class="h-6 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
+
+                <!-- Input Tanggal Manual -->
+                <div class="flex items-center gap-1.5">
+                    <input type="date" id="startDate" onchange="filterDataByDate()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
+                    <span class="text-xs text-slate-400">s/d</span>
+                    <input type="date" id="endDate" onchange="filterDataByDate()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
+                </div>
+            </div>
+        </div>
+
+        <!-- Grafik Visualisasi -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-base font-bold text-slate-800 mb-4">Tren Kejadian Temuan Produk Penyok</h2>
+                <div class="relative h-72 w-full">
+                    <canvas id="penyokChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-base font-bold text-slate-800 mb-4">Distribusi Shift Kerja Inspeksi</h2>
+                <div class="relative h-72 w-full flex justify-center items-center">
+                    <canvas id="shiftChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabel Log Inspeksi Terbaru -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <div>
+                    <h2 class="text-base font-bold text-slate-800">Riwayat Inspeksi Terakhir</h2>
+                    <p class="text-xs text-slate-500">Menampilkan 5 data laporan pemeriksaan terbaru</p>
+                </div>
+                <button onclick="openSemuaRiwayatModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg shadow-sm transition font-medium">
+                    Tampilkan Semua Data
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                            <th class="p-4 font-semibold">Tanggal</th>
+                            <th class="p-4 font-semibold">Shift</th>
+                            <th class="p-4 font-semibold">Pallet Rusak</th>
+                            <th class="p-4 font-semibold">Segel Baik</th>
+                            <th class="p-4 font-semibold">Produk Penyok</th>
+                            <th class="p-4 font-semibold">Label Baik</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-100 text-sm text-slate-700">
+                        <!-- Data dimasukkan lewat JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL POPUP DETAIL PENYOK -->
+    <div id="penyokModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Detail Riwayat Temuan Produk Penyok</h3>
+                    <p class="text-xs text-slate-500">Daftar seluruh inspeksi dengan status "Ya" pada produk penyok</p>
+                </div>
+                <button onclick="closePenyokModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
+            </div>
+            <div class="p-0 overflow-y-auto flex-1 modal-body-scroll">
+                <table class="w-full text-left border-collapse">
+                    <thead class="sticky top-0 bg-white shadow-sm">
+                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                            <th class="p-3 pl-6 font-semibold">Tanggal</th>
+                            <th class="p-3 font-semibold">Shift</th>
+                            <th class="p-3 pr-6 font-semibold">Status Temuan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-table-body" class="divide-y divide-slate-100 text-sm text-slate-700">
+                        <!-- Diisi JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                <button onclick="closePenyokModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL POPUP SEMUA RIWAYAT -->
+    <div id="semuaRiwayatModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Semua Riwayat Inspeksi</h3>
+                    <p class="text-xs text-slate-500">Menampilkan seluruh data laporan pemeriksaan Rak A01</p>
+                </div>
+                <button onclick="closeSemuaRiwayatModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
+            </div>
+            <div class="p-0 overflow-y-auto flex-1 modal-body-scroll" style="max-height: 70vh;">
+                <table class="w-full text-left border-collapse">
+                    <thead class="sticky top-0 bg-white shadow-sm">
+                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                            <th class="p-4 pl-6 font-semibold">Tanggal</th>
+                            <th class="p-4 font-semibold">Shift</th>
+                            <th class="p-4 font-semibold text-center">Pallet Rusak</th>
+                            <th class="p-4 font-semibold text-center">Segel Baik</th>
+                            <th class="p-4 font-semibold text-center">Produk Penyok</th>
+                            <th class="p-4 font-semibold text-center">Label Baik</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-semua-riwayat-body" class="divide-y divide-slate-100 text-sm text-slate-700">
+                        <!-- Diisi JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                <button onclick="closeSemuaRiwayatModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1rpc8jEhFa8tqfF6viYLY9UTbO65o7VfkXLuh0xihdR0/export?format=csv&gid=181124829';
+
+        let penyokChartInstance = null;
+        let shiftChartInstance = null;
+        let globalPenyokData = [];
+        let globalSemuaRiwayatData = [];
+
+        function parseDateString(dateStr) {
+            if (!dateStr) return null;
+            const parts = dateStr.trim().split('/');
+            if (parts.length === 3) {
+                return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+            }
+            return null;
+        }
+
+        function loadData() {
+            Papa.parse(SHEET_CSV_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    const data = results.data;
+                    if (data.length === 0) return;
+
+                    const keys = Object.keys(data[0]);
+                    const colTanggal = keys[1];
+                    const colShift = keys[2];
+                    const colPallet = keys[3];
+                    const colSegel = keys[5];
+                    const colPenyok = keys[7];
+                    const colLabel = keys[11];
+
+                    document.getElementById('total-inspeksi').innerText = data.length;
+
+                    const latest = data[data.length - 1];
+                    document.getElementById('last-date').innerText = latest[colTanggal] || '-';
+                    document.getElementById('last-shift').innerText = latest[colShift] || '-';
+
+                    let totalPenyok = 0;
+                    let shift1Count = 0;
+                    let shift2Count = 0;
+                    globalPenyokData = [];
+                    globalSemuaRiwayatData = [];
+
+                    data.forEach(row => {
+                        const tgl = row[colTanggal] || '-';
+                        const statusPenyok = row[colPenyok];
+
+                        if (statusPenyok && statusPenyok.toLowerCase().includes('ya')) {
+                            totalPenyok++;
+                            globalPenyokData.push({
+                                tanggal: tgl,
+                                shift: row[colShift] || '-',
+                                status: statusPenyok,
+                                dateObj: parseDateString(tgl)
+                            });
+                        }
+                        const shift = row[colShift];
+                        if (shift && shift.includes('1')) shift1Count++;
+                        if (shift && shift.includes('2')) shift2Count++;
+
+                        globalSemuaRiwayatData.push({
+                            tanggal: tgl,
+                            shift: row[colShift] || '-',
+                            pallet: row[colPallet] || '-',
+                            segel: row[colSegel] || '-',
+                            penyok: row[colPenyok] || '-',
+                            label: row[colLabel] || '-',
+                            dateObj: parseDateString(tgl)
+                        });
+                    });
+
+                    document.getElementById('count-penyok').innerText = totalPenyok;
+
+                    filterDataByDate();
+                    renderShiftChart(shift1Count, shift2Count);
+
+                    // Render Tabel Riwayat Utama (5 Terbaru)
+                    const tableBody = document.getElementById('table-body');
+                    tableBody.innerHTML = '';
+                    const latestFive = [...data].reverse().slice(0, 5);
+
+                    latestFive.forEach(row => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="p-4 font-medium">${row[colTanggal] || '-'}</td>
+                            <td class="p-4"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${row[colShift] || '-'}</span></td>
+                            <td class="p-4">${row[colPallet] || '-'}</td>
+                            <td class="p-4">${row[colSegel] || '-'}</td>
+                            <td class="p-4"><span class="${row[colPenyok] === 'Ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${row[colPenyok] || '-'}</span></td>
+                            <td class="p-4">${row[colLabel] || '-'}</td>
+                        `;
+                        tableBody.appendChild(tr);
+                    });
+
+                    // Render Tabel Modal Semua Riwayat
+                    const modalSemuaRiwayatBody = document.getElementById('modal-semua-riwayat-body');
+                    modalSemuaRiwayatBody.innerHTML = '';
+                    
+                    [...globalSemuaRiwayatData].reverse().forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-slate-50 transition";
+                        tr.innerHTML = `
+                            <td class="p-4 pl-6 font-medium whitespace-nowrap">${item.tanggal}</td>
+                            <td class="p-4"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${item.shift}</span></td>
+                            <td class="p-4 text-center ${item.pallet === 'Ya' ? 'text-red-600 font-semibold' : ''}">${item.pallet}</td>
+                            <td class="p-4 text-center ${item.segel === 'Tidak' ? 'text-red-600 font-semibold' : ''}">${item.segel}</td>
+                            <td class="p-4 text-center ${item.penyok === 'Ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${item.penyok}</td>
+                            <td class="p-4 text-center ${item.label === 'Tidak' ? 'text-red-600 font-semibold' : ''}">${item.label}</td>
+                        `;
+                        modalSemuaRiwayatBody.appendChild(tr);
+                    });
+
+                    document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
+                },
+                error: function(err) {
+                    console.error("Gagal membaca data:", err);
+                    document.getElementById('live-status').innerText = 'Koneksi Gagal';
+                }
+            });
+        }
+
+        function setQuickDate(type) {
+            const today = new Date();
+            let start = new Date();
+
+            if (type === '7days') {
+                start.setDate(today.getDate() - 7);
+            } else if (type === 'thisMonth') {
+                start = new Date(today.getFullYear(), today.getMonth(), 1);
+            }
+
+            document.getElementById('startDate').value = start.toISOString().split('T')[0];
+            document.getElementById('endDate').value = today.toISOString().split('T')[0];
+            filterDataByDate();
+        }
+
+        function filterDataByDate() {
+            const startVal = document.getElementById('startDate').value;
+            const endVal = document.getElementById('endDate').value;
+
+            const startDate = startVal ? new Date(startVal) : null;
+            const endDate = endVal ? new Date(endVal) : null;
+
+            const penyokPerTanggal = {};
+
+            globalPenyokData.forEach(item => {
+                if (!item.dateObj) return;
+
+                let pass = true;
+                if (startDate && item.dateObj < startDate) pass = false;
+                if (endDate && item.dateObj > endDate) pass = false;
+
+                if (pass) {
+                    if (!penyokPerTanggal[item.tanggal]) {
+                        penyokPerTanggal[item.tanggal] = 0;
+                    }
+                    penyokPerTanggal[item.tanggal]++;
+                }
+            });
+
+            renderPenyokChart(Object.keys(penyokPerTanggal), Object.values(penyokPerTanggal));
+        }
+
+        function resetDateFilter() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            filterDataByDate();
+        }
+
+        function openPenyokModal() {
+            const modalBody = document.getElementById('modal-table-body');
+            modalBody.innerHTML = '';
+
+            if (globalPenyokData.length === 0) {
+                modalBody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-slate-400">Tidak ada riwayat produk penyok.</td></tr>`;
+            } else {
+                [...globalPenyokData].reverse().forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-amber-50/50 transition";
+                    tr.innerHTML = `
+                        <td class="p-3 pl-6 font-medium whitespace-nowrap">${item.tanggal}</td>
+                        <td class="p-3"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded">${item.shift}</span></td>
+                        <td class="p-3 pr-6 text-red-600 font-semibold">${item.status} (Ditemukan Kerusakan)</td>
+                    `;
+                    modalBody.appendChild(tr);
+                });
+            }
+            document.getElementById('penyokModal').classList.remove('hidden');
+        }
+
+        function closePenyokModal() {
+            document.getElementById('penyokModal').classList.add('hidden');
+        }
+
+        function openSemuaRiwayatModal() {
+            document.getElementById('semuaRiwayatModal').classList.remove('hidden');
+        }
+
+        function closeSemuaRiwayatModal() {
+            document.getElementById('semuaRiwayatModal').classList.add('hidden');
+        }
+
+        function renderPenyokChart(labels, values) {
+            const ctx = document.getElementById('penyokChart').getContext('2d');
+            if (penyokChartInstance) penyokChartInstance.destroy();
+
+            penyokChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Jumlah Temuan',
+                        data: values,
+                        backgroundColor: '#f59e0b',
+                        borderRadius: 6,
+                        barThickness: 'flex',
+                        maxBarThickness: 40
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { 
+                            beginAtZero: true,
+                            grid: { color: '#f1f5f9' },
+                            ticks: { stepSize: 1 } 
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function renderShiftChart(shift1, shift2) {
+            const ctx = document.getElementById('shiftChart').getContext('2d');
+            if (shiftChartInstance) shiftChartInstance.destroy();
+
+            shiftChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Shift 1', 'Shift 2'],
+                    datasets: [{
+                        data: [shift1, shift2],
+                        backgroundColor: ['#3b82f6', '#38bdf8'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        loadData();
+        setInterval(() => { loadData(); }, 10000);
+    </script>
+</body>
+</html>
