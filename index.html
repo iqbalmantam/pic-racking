@@ -153,7 +153,7 @@
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
                 <div>
                     <h2 class="text-base font-bold text-slate-800">🏆 Leaderboard Kepatuhan PIC (Audit Compliance)</h2>
-                    <p class="text-xs text-slate-500">Peringkat PIC berdasarkan jumlah laporan pemeriksaan yang masuk pada rentang tanggal terpilih</p>
+                    <p class="text-xs text-slate-500">Klik pada baris PIC di bawah untuk melihat detail riwayat laporannya</p>
                 </div>
             </div>
             <div class="overflow-x-auto">
@@ -201,6 +201,37 @@
                         <!-- Data dimasukkan lewat JS -->
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL POPUP DETAIL PIC LEADERBOARD -->
+    <div id="picDetailModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div>
+                    <h3 id="pic-modal-title" class="text-base font-bold text-slate-900">Detail Laporan PIC</h3>
+                    <p class="text-xs text-slate-500">Daftar seluruh riwayat inspeksi untuk PIC/Rak ini pada rentang tanggal terpilih</p>
+                </div>
+                <button onclick="closePicDetailModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
+            </div>
+            <div class="p-0 overflow-y-auto flex-1 modal-body-scroll">
+                <table class="w-full text-left border-collapse">
+                    <thead class="sticky top-0 bg-white shadow-sm">
+                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                            <th class="p-3 pl-6 font-semibold">Tanggal</th>
+                            <th class="p-3 font-semibold">Shift</th>
+                            <th class="p-3 font-semibold text-center">Pallet Rusak</th>
+                            <th class="p-3 font-semibold text-center">Segel Baik</th>
+                            <th class="p-3 font-semibold text-center">Produk Penyok</th>
+                            <th class="p-3 pr-6 font-semibold text-center">Label Baik</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-pic-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+                </table>
+            </div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                <button onclick="closePicDetailModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
             </div>
         </div>
     </div>
@@ -365,7 +396,6 @@
             preloadAllRaks();
         }
 
-        // SMART DATE PARSER (Kebal Format DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD & Timestamp)
         function parseDateString(dateStr) {
             if (!dateStr) return null;
             const dateOnly = dateStr.trim().split(' ')[0]; 
@@ -376,7 +406,6 @@
                     let p0 = parseInt(parts[0], 10);
                     let p1 = parseInt(parts[1], 10);
 
-                    // Jika format YYYY/MM/DD
                     if (parts[0].length === 4) {
                         return new Date(`${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`);
                     }
@@ -384,7 +413,6 @@
                     let year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
                     let month, day;
 
-                    // Deteksi otomatis format hari dan bulan yang valid
                     if (p0 > 12) {
                         day = parts[0];
                         month = parts[1];
@@ -392,7 +420,6 @@
                         month = parts[0];
                         day = parts[1];
                     } else {
-                        // Default aman standar Indonesia (DD/MM/YYYY)
                         day = parts[0];
                         month = parts[1];
                     }
@@ -753,15 +780,63 @@
                 else if (index === 2) rankBadge = `<span class="bg-amber-50 text-amber-900 px-2 py-0.5 rounded-full font-bold text-xs">🥉 #3</span>`;
 
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition";
+                tr.className = "hover:bg-blue-50/50 cursor-pointer transition";
+                tr.setAttribute('onclick', `openPicDetail('${item.name}')`);
                 tr.innerHTML = `
                     <td class="p-4 pl-6 text-center">${rankBadge}</td>
-                    <td class="p-4 font-semibold text-slate-800 text-xs">${item.name}</td>
+                    <td class="p-4 font-semibold text-slate-800 text-xs flex items-center justify-between">
+                        <span>${item.name}</span>
+                        <span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold no-print">Klik Detail</span>
+                    </td>
                     <td class="p-4 text-center font-bold text-blue-600">${item.count} Laporan</td>
                     <td class="p-4 pr-6 text-center"><span class="text-xs px-2.5 py-1 rounded-full font-semibold ${badgeClass}">${badgeText}</span></td>
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        // FUNGSI MEMBUKA MODAL DETAIL PIC
+        function openPicDetail(rakName) {
+            document.getElementById('pic-modal-title').innerText = `Detail Laporan: ${rakName}`;
+            const tbody = document.getElementById('modal-pic-body');
+            tbody.innerHTML = '';
+
+            const startVal = document.getElementById('startDate').value;
+            const endVal = document.getElementById('endDate').value;
+            const startDate = startVal ? new Date(startVal) : null;
+            const endDate = endVal ? new Date(endVal) : null;
+
+            const filteredRows = globalSemuaRiwayatData.filter(item => {
+                if (item.rakName !== rakName) return false;
+                if (!item.dateObj) return true;
+                if (startDate && item.dateObj < startDate) return false;
+                if (endDate && item.dateObj > endDate) return false;
+                return true;
+            });
+
+            if (filteredRows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">Tidak ada riwayat laporan untuk PIC ini pada rentang tanggal tersebut.</td></tr>`;
+            } else {
+                [...filteredRows].reverse().forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition";
+                    tr.innerHTML = `
+                        <td class="p-3 pl-6 font-medium whitespace-nowrap">${item.tanggal}</td>
+                        <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${item.shift}</span></td>
+                        <td class="p-3 text-center ${item.pallet.toLowerCase() === 'ya' ? 'text-red-600 font-semibold' : ''}">${item.pallet}</td>
+                        <td class="p-3 text-center ${item.segel.toLowerCase() === 'tidak' ? 'text-red-600 font-semibold' : ''}">${item.segel}</td>
+                        <td class="p-3 text-center ${item.penyok.toLowerCase() === 'ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${item.penyok}</td>
+                        <td class="p-3 pr-6 text-center ${item.label.toLowerCase() === 'tidak' ? 'text-red-600 font-semibold' : ''}">${item.label}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            document.getElementById('picDetailModal').classList.remove('hidden');
+        }
+
+        function closePicDetailModal() {
+            document.getElementById('picDetailModal').classList.add('hidden');
         }
 
         function resetDateFilter() {
