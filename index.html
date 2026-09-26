@@ -16,6 +16,12 @@
             max-height: 60vh;
             overflow-y: auto;
         }
+        @media print {
+            body { background: white !important; }
+            header, button, input, .no-print { display: none !important; }
+            .max-w-7xl { max-width: 100% !important; padding: 0 !important; }
+            div { box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 font-sans antialiased text-slate-800">
@@ -34,12 +40,24 @@
                 <p class="text-sm text-slate-500">Status Tampilan: <span id="pic-name" class="font-semibold text-blue-600">🌐 Summary Keseluruhan Gudang</span></p>
             </div>
             
-            <!-- DROPDOWN PILIH RAK / PIC -->
-            <div class="w-full md:w-auto flex flex-col gap-1">
-                <label for="rakSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rak & PIC:</label>
-                <select id="rakSelect" onchange="loadData()" class="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-blue-500 shadow-sm">
-                    <!-- Opsi diisi otomatis -->
-                </select>
+            <div class="flex flex-col md:flex-row items-start md:items-center gap-3 w-full md:w-auto">
+                <!-- TOMBOL EKSPOR & CETAK -->
+                <div class="flex items-center gap-2 no-print">
+                    <button onclick="exportToCSV()" title="Unduh Data CSV/Excel" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5">
+                        📥 Unduh Excel
+                    </button>
+                    <button onclick="window.print()" title="Cetak / Simpan PDF" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5">
+                        🖨️ Cetak PDF
+                    </button>
+                </div>
+
+                <!-- DROPDOWN PILIH RAK / PIC -->
+                <div class="w-full md:w-auto flex flex-col gap-1">
+                    <label for="rakSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rak & PIC:</label>
+                    <select id="rakSelect" onchange="loadData()" class="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-blue-500 shadow-sm">
+                        <!-- Opsi diisi otomatis -->
+                    </select>
+                </div>
             </div>
         </header>
 
@@ -124,10 +142,34 @@
                     <input type="date" id="checkDate" onchange="checkUncheckedRaks()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500 font-semibold">
                 </div>
                 
-                <!-- Kotak Daftar Rak Kosong -->
                 <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 flex-1 overflow-y-auto max-h-60 bg-slate-50/50 text-sm text-slate-600">
                     <p class="text-center text-slate-400 italic mt-6">Memuat status pemeriksaan...</p>
                 </div>
+            </div>
+        </div>
+
+        <!-- LEADERBOARD KEPATUHAN PIC -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <div>
+                    <h2 class="text-base font-bold text-slate-800">🏆 Leaderboard Kepatuhan PIC (Audit Compliance)</h2>
+                    <p class="text-xs text-slate-500">Peringkat PIC berdasarkan jumlah laporan pemeriksaan yang masuk pada rentang tanggal terpilih</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                            <th class="p-4 pl-6 font-semibold w-16 text-center">Rank</th>
+                            <th class="p-4 font-semibold">Rak / PIC</th>
+                            <th class="p-4 font-semibold text-center">Total Laporan Dikirim</th>
+                            <th class="p-4 font-semibold pr-6 text-center">Status Keaktifan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body" class="divide-y divide-slate-100 text-sm text-slate-700">
+                        <!-- Diisi via JS -->
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -316,14 +358,13 @@
                 select.appendChild(option);
             });
 
-            select.value = 0; // Default ke "Semua Rak"
+            select.value = 0;
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('checkDate').value = todayStr;
 
             preloadAllRaks();
         }
 
-        // Fungsi Parse Tanggal yang Tahan Timestamp/Jam
         function parseDateString(dateStr) {
             if (!dateStr) return null;
             const dateOnly = dateStr.trim().split(' ')[0]; 
@@ -497,7 +538,6 @@
 
             filterDataByDate();
 
-            // Render Tabel Riwayat Terbaru (5 Teratas)
             const tableBody = document.getElementById('table-body');
             tableBody.innerHTML = '';
             const latestFive = [...globalSemuaRiwayatData].reverse().slice(0, 5);
@@ -516,7 +556,6 @@
                 tableBody.appendChild(tr);
             });
 
-            // Render Tabel Modal Semua Riwayat
             const modalSemuaRiwayatBody = document.getElementById('modal-semua-riwayat-body');
             modalSemuaRiwayatBody.innerHTML = '';
             
@@ -592,6 +631,7 @@
             document.getElementById('last-shift').innerText = '-';
             document.getElementById('count-all-defects').innerText = '0';
             document.getElementById('table-body').innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">Belum ada data tersedia.</td></tr>`;
+            document.getElementById('leaderboard-body').innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">Belum ada data leaderboard.</td></tr>`;
         }
 
         function setQuickDate(type) {
@@ -616,6 +656,12 @@
             let countLabelBuruk = 0;
 
             globalAllDefectsList = [];
+            let picSubmissionCounts = {};
+
+            // Inisialisasi hitungan untuk semua rak
+            for (let i = 1; i < RAK_DATA.length; i++) {
+                picSubmissionCounts[RAK_DATA[i].name] = 0;
+            }
 
             if (globalRawRows.length > 0) {
                 globalRawRows.forEach(row => {
@@ -629,6 +675,10 @@
 
                     if (pass) {
                         const rakName = row._rakName || '-';
+                        if (picSubmissionCounts[rakName] !== undefined) {
+                            picSubmissionCounts[rakName]++;
+                        }
+
                         const tgl = tglVal || '-';
                         const shift = row._colShift ? row[row._colShift] || '-' : '-';
                         const p = row._colPallet ? row[row._colPallet].trim().toLowerCase() : '';
@@ -656,6 +706,44 @@
 
             document.getElementById('count-all-defects').innerText = globalAllDefectsList.length;
             renderDefectChart(countPalletRusak, countSegelBuruk, countPenyok, countLabelBuruk);
+            renderLeaderboard(picSubmissionCounts);
+        }
+
+        function renderLeaderboard(countsObj) {
+            const tbody = document.getElementById('leaderboard-body');
+            tbody.innerHTML = '';
+
+            // Ubah object ke array lalu sort dari submission terbanyak
+            let sortedArr = Object.keys(countsObj).map(name => {
+                return { name, count: countsObj[name] };
+            }).sort((a, b) => b.count - a.count);
+
+            sortedArr.forEach((item, index) => {
+                let badgeClass = "bg-emerald-50 text-emerald-700";
+                let badgeText = "Sangat Aktif";
+                if (item.count === 0) {
+                    badgeClass = "bg-red-50 text-red-600";
+                    badgeText = "Belum Lapor";
+                } else if (item.count < 3) {
+                    badgeClass = "bg-amber-50 text-amber-700";
+                    badgeText = "Cukup Aktif";
+                }
+
+                let rankBadge = `<span class="font-bold text-slate-500">#${index + 1}</span>`;
+                if (index === 0) rankBadge = `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold text-xs">🥇 #1</span>`;
+                else if (index === 1) rankBadge = `<span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded-full font-bold text-xs">🥈 #2</span>`;
+                else if (index === 2) rankBadge = `<span class="bg-amber-50 text-amber-900 px-2 py-0.5 rounded-full font-bold text-xs">🥉 #3</span>`;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="p-4 pl-6 text-center">${rankBadge}</td>
+                    <td class="p-4 font-semibold text-slate-800 text-xs">${item.name}</td>
+                    <td class="p-4 text-center font-bold text-blue-600">${item.count} Laporan</td>
+                    <td class="p-4 pr-6 text-center"><span class="text-xs px-2.5 py-1 rounded-full font-semibold ${badgeClass}">${badgeText}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         function resetDateFilter() {
@@ -765,6 +853,37 @@
         function closeSemuaTemuanModal() { document.getElementById('semuaTemuanModal').classList.add('hidden'); }
         function openSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.remove('hidden'); }
         function closeSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.add('hidden'); }
+
+        // Fungsi Ekspor ke File CSV/Excel
+        function exportToCSV() {
+            if (globalSemuaRiwayatData.length === 0) {
+                alert("Tidak ada data untuk diexport.");
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Rak / PIC,Tanggal,Shift,Pallet Rusak,Segel Baik,Produk Penyok,Label Baik\r\n";
+
+            globalSemuaRiwayatData.forEach(row => {
+                let rowData = [
+                    `"${row.rakName}"`,
+                    `"${row.tanggal}"`,
+                    `"${row.shift}"`,
+                    `"${row.pallet}"`,
+                    `"${row.segel}"`,
+                    `"${row.penyok}"`,
+                    `"${row.label}"`
+                ];
+                csvContent += rowData.join(",") + "\r\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `laporan_monitoring_racking_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
 
         function renderDefectChart(pallet, segel, penyok, label) {
             const ctx = document.getElementById('defectChart').getContext('2d');
