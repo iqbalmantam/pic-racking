@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard PIC Racking - Rak A01</title>
+    <title>Dashboard Multi-PIC Racking Gudang</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
@@ -21,8 +21,8 @@
 <body class="bg-slate-50 font-sans antialiased text-slate-800">
 
     <div class="max-w-7xl mx-auto px-4 py-8">
-        <!-- Header Utama -->
-        <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <!-- Header Utama & Dropdown Pilih Rak -->
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
             <div>
                 <div class="flex items-center gap-2">
                     <span class="bg-blue-50 text-blue-600 border border-blue-100 text-xs font-semibold px-2.5 py-0.5 rounded-full">Monitoring Operasional Gudang</span>
@@ -30,12 +30,16 @@
                         <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> Live Sync
                     </span>
                 </div>
-                <h1 class="text-2xl font-bold text-slate-900 mt-1">Dashboard PIC Racking: Rak A01</h1>
-                <p class="text-sm text-slate-500">Penanggung Jawab: <span class="font-semibold text-slate-700">Arik Koswara</span></p>
+                <h1 class="text-2xl font-bold text-slate-900 mt-1">Dashboard Monitoring Racking</h1>
+                <p class="text-sm text-slate-500">Penanggung Jawab (PIC): <span id="pic-name" class="font-semibold text-slate-700">-</span></p>
             </div>
-            <div class="mt-4 md:mt-0 text-right">
-                <p class="text-xs text-slate-400">Pembaruan Terakhir</p>
-                <p id="last-update" class="text-sm font-semibold text-slate-700">-</p>
+            
+            <!-- DROPDOWN PILIH RAK / PIC -->
+            <div class="w-full md:w-auto flex flex-col gap-1">
+                <label for="rakSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rak & PIC:</label>
+                <select id="rakSelect" onchange="changeRak()" class="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-blue-500 shadow-sm">
+                    <!-- Opsi akan diisi otomatis lewat JavaScript -->
+                </select>
             </div>
         </header>
 
@@ -67,29 +71,27 @@
                 </div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Frekuensi Auto-Refresh</p>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pembaruan Data</p>
                 <div class="flex items-baseline justify-between mt-2">
-                    <h3 class="text-2xl font-bold text-slate-700">10 Detik</h3>
-                    <span class="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded">Aktif</span>
+                    <h3 id="last-update" class="text-sm font-semibold text-slate-700">-</h3>
+                    <span class="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded">Otomatis</span>
                 </div>
             </div>
         </div>
 
-        <!-- Panel Filter Rentang Tanggal yang Profesional -->
+        <!-- Panel Filter Rentang Tanggal -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
             <div>
                 <h3 class="font-bold text-slate-800 text-sm">Filter Grafik Berdasarkan Tanggal</h3>
                 <p class="text-xs text-slate-500">Pilih rentang waktu atau gunakan tombol cepat di samping</p>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
-                <!-- Tombol Pintas Cepat -->
                 <button onclick="setQuickDate('7days')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">7 Hari Terakhir</button>
                 <button onclick="setQuickDate('thisMonth')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Bulan Ini</button>
                 <button onclick="resetDateFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Semua Data</button>
                 
                 <div class="h-6 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
 
-                <!-- Input Tanggal Manual -->
                 <div class="flex items-center gap-1.5">
                     <input type="date" id="startDate" onchange="filterDataByDate()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
                     <span class="text-xs text-slate-400">s/d</span>
@@ -181,7 +183,7 @@
             <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <div>
                     <h3 class="text-base font-bold text-slate-900">Semua Riwayat Inspeksi</h3>
-                    <p class="text-xs text-slate-500">Menampilkan seluruh data laporan pemeriksaan Rak A01</p>
+                    <p class="text-xs text-slate-500">Menampilkan seluruh data laporan pemeriksaan</p>
                 </div>
                 <button onclick="closeSemuaRiwayatModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
             </div>
@@ -209,12 +211,65 @@
     </div>
 
     <script>
-        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1rpc8jEhFa8tqfF6viYLY9UTbO65o7VfkXLuh0xihdR0/export?format=csv&gid=181124829';
+        // DAFTAR SELURUH RAK & PIC BESERTA LINK CSV NYA
+        const RAK_DATA = [
+            { name: "Rak A01 - Arik Koswara", url: "https://docs.google.com/spreadsheets/d/1rpc8jEhFa8tqfF6viYLY9UTbO65o7VfkXLuh0xihdR0/export?format=csv&gid=181124829" },
+            { name: "Rak A02 & A03 - Aris Munandar", url: "https://docs.google.com/spreadsheets/d/1KEE-_6jfxEyJiNn9zNlUXoJtQ9E0VF-I8iQpWvCOkKU/export?format=csv&gid=2114378414" },
+            { name: "Rak A04 & A05 - Pangabean H", url: "https://docs.google.com/spreadsheets/d/142POCALpGcVmUbtrXGWW8n9lhgzVfWPFi7K6EuLM3ro/export?format=csv&gid=0" },
+            { name: "Rak A06 & A07 - Heki Apriansah", url: "https://docs.google.com/spreadsheets/d/1UGeTL1T3XUX_9m3y7KXOnWvsxF1CTEafUyFq_Fwl8jI/export?format=csv&gid=0" },
+            { name: "Rak A08 & A09 - Ignasius Sinaga", url: "https://docs.google.com/spreadsheets/d/1-uKNQ755Odz2UkxFQV0XkY2T8ExIJN4XnN-p_Fg09KE/export?format=csv&gid=493836939" },
+            { name: "Rak A10 & A11 - Sabar Sihotang", url: "https://docs.google.com/spreadsheets/d/1nCkYkJGMQxBGIh20vM78qwL46iABdg48DYuL1hMjIHE/export?format=csv&gid=212632155" },
+            { name: "Rak A12 & A13 - Nizar Alam", url: "https://docs.google.com/spreadsheets/d/1Ecknpp0emPEtI7zrAkF5uOJu4h1_cqO5viJ19uTvqFg/export?format=csv&gid=1153760204" },
+            { name: "Rak A14 - Saiful Anwar", url: "https://docs.google.com/spreadsheets/d/1yKuR80FJcr9K8GEQrSQcA7SSDLy8vOsZG0cyDpYizUk/export?format=csv&gid=711037262" },
+            { name: "Rak B01 & B02 - Rizky Ardiansyah", url: "https://docs.google.com/spreadsheets/d/1B0bft91hk-dDJzplRYFhFxTQa7qoMAbpXNtNtF7C_5g/export?format=csv&gid=141823365" },
+            { name: "Rak B03 & B04 - Irfan Yogie", url: "https://docs.google.com/spreadsheets/d/1GPnKkF7WQRG6HWDmEFT2jxmN6yxQ-XFv0U1BA2L5Xuc/export?format=csv&gid=1397910948" },
+            { name: "Rak B05 & B06 - Zaidan Akbar", url: "https://docs.google.com/spreadsheets/d/1V_cMiUBFOUFw4INSXgs1SHhHtCBjWXzfj8Lt6v84P6A/export?format=csv&gid=1032370587" },
+            { name: "Rak B07 & B08 - Fiqry Guram", url: "https://docs.google.com/spreadsheets/d/1gAaehNSOnSdGrcXCVE5DM-uVNouIOqqy5JzEwsFF5co/export?format=csv&gid=1796346417" },
+            { name: "Rak B09 & B10 - Amin", url: "https://docs.google.com/spreadsheets/d/1EKUIy6i5zKNGVsRzRvn4sfEVsmoZ8nZD99J-rIi68OQ/export?format=csv&gid=1440077250" },
+            { name: "Rak B11 & B12 - Umar Setiawan", url: "https://docs.google.com/spreadsheets/d/1oHpr-kaMe0Fu_rndGKRpMQTYSrDyyKd08eFjI8qFfog/export?format=csv&gid=1894896248" },
+            { name: "Rak B13 & B14 - Agus Wahyudi", url: "https://docs.google.com/spreadsheets/d/1E9iV96Eaw-AgT-9JChjmL0wvUQB4RCmmmzjCZ14fLms/export?format=csv&gid=1547751855" },
+            { name: "Rak C01 - Mardi Wahyudi", url: "https://docs.google.com/spreadsheets/d/1HMazBsrEX5nGDPg-bCfR3CdgHjKjEZNx_0I0sjckOjM/export?format=csv&gid=799849935" },
+            { name: "Rak C02 - Kemmy Budiman", url: "https://docs.google.com/spreadsheets/d/1Uf2gZK84XGnFQLZRK6M9-CEQySQbe_V8VgzRrpu4ZvE/export?format=csv&gid=2090145238" },
+            { name: "Rak C03 - Akhmad Junaedi", url: "https://docs.google.com/spreadsheets/d/1cdGsPtpaPuSpv8g1o3SCuimrJI8mQtJVEFyutWcgQNU/export?format=csv&gid=1285547876" },
+            { name: "Rak C04 - Ade Hidayatullah", url: "https://docs.google.com/spreadsheets/d/1chJanW9Y7QrXn35pSN_3fUjR1LcibWruwOwBmdPYt_E/export?format=csv&gid=1776404867" },
+            { name: "Rak C05 - Ajay Permana", url: "https://docs.google.com/spreadsheets/d/1d3Q-aJowRLPQwOA22FSL5yP0vPvBQLebycDu1d5jFVc/export?format=csv&gid=1486660792" },
+            { name: "Rak C06 - Mohammad Tohani", url: "https://docs.google.com/spreadsheets/d/11YquQ8g-klLKtPV7maSdqTO_kF8Cr3_LvSfNqgUcwcA/export?format=csv&gid=852388286" },
+            { name: "Rak C07 - Dwi Nanto", url: "https://docs.google.com/spreadsheets/d/1ueq9EUHQybzvdovrxW-kAgnbJefwx5LmfuN7Mbp5tM0/export?format=csv&gid=973349320" },
+            { name: "Rak C08 - Wawan Irawan", url: "https://docs.google.com/spreadsheets/d/1_cGCXeaEp8u9-kqpziNvHZeUWHo86McesCsHjaxNKFY/export?format=csv&gid=1305538088" },
+            { name: "Rak C09 - Agung Masita", url: "https://docs.google.com/spreadsheets/d/1LMzQUwmIGN_Rrq6dkmbAdwxzrot0u6r7FtC7pzgkw50/export?format=csv&gid=933497596" },
+            { name: "Rak C10 - Agung Masita", url: "https://docs.google.com/spreadsheets/d/1blT768-zJx6FaR1TIt5Pxda-FNyqA7ECBIaou4lVz_U/export?format=csv&gid=787598763" },
+            { name: "Rak D01 - Adil Mardianto", url: "https://docs.google.com/spreadsheets/d/1d2Nmso_ICWOHxOrvLgrQMy7A1MDxvepsOJX_T8ktmOY/export?format=csv&gid=1199580992" },
+            { name: "Rak D02 - M Arifin", url: "https://docs.google.com/spreadsheets/d/1kZFRSFX-pXHG17PG5AZYrXhomfZZ4AdWBcZACWO-NPA/export?format=csv&gid=1848198725" },
+            { name: "Rak D03 - Rudiyanto", url: "https://docs.google.com/spreadsheets/d/1QkmkQ7CONRuCxBItsbQ9eUO707QYozBr7I7YKqFBkLM/export?format=csv&gid=990920895" },
+            { name: "Rak D04 - Mulyana", url: "https://docs.google.com/spreadsheets/d/1dqhMRG923i9GTbePm84uhMKZDuceD6bzBJAA1rIQfBM/export?format=csv&gid=2126555591" },
+            { name: "Rak D05 - Bera Parsimin", url: "https://docs.google.com/spreadsheets/d/1IfKXp9A6s2JzQ4Vm16toX5BLdEYC0mwTAOFtnnmMtDM/export?format=csv&gid=295077709" },
+            { name: "Rak D07 - Sahroni", url: "https://docs.google.com/spreadsheets/d/1guqOm-WoUjatuqH9dcEEmyZ6VHPvQri_KB8AaY5kddU/export?format=csv&gid=988361560" },
+            { name: "Rak D08 - Agus Apriyanto", url: "https://docs.google.com/spreadsheets/d/1w5iZ2Ev6pGEaQMby_eFWnukPHMbz0kz951CS49Qt8gc/export?format=csv&gid=1191107146" },
+            { name: "Rak D09 - Agus Apriyanto", url: "https://docs.google.com/spreadsheets/d/1ixv0Lfbd_tHf-f2quuWCwlea4vWIpPXfO8OBaiOGSHU/export?format=csv&gid=1365455648" }
+        ];
 
         let penyokChartInstance = null;
         let shiftChartInstance = null;
         let globalPenyokData = [];
         let globalSemuaRiwayatData = [];
+        let refreshTimer = null;
+
+        // Inisialisasi Dropdown saat halaman pertama kali dimuat
+        function initDropdown() {
+            const select = document.getElementById('rakSelect');
+            select.innerHTML = '';
+            RAK_DATA.forEach((rak, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.text = rak.name;
+                select.appendChild(option);
+            });
+            loadData();
+        }
+
+        function changeRak() {
+            loadData();
+        }
 
         function parseDateString(dateStr) {
             if (!dateStr) return null;
@@ -226,13 +281,24 @@
         }
 
         function loadData() {
-            Papa.parse(SHEET_CSV_URL, {
+            const select = document.getElementById('rakSelect');
+            const selectedIndex = select.value || 0;
+            const currentRak = RAK_DATA[selectedIndex];
+
+            // Tampilkan nama PIC di header
+            const partsName = currentRak.name.split(' - ');
+            document.getElementById('pic-name').innerText = partsName[1] || currentRak.name;
+
+            Papa.parse(currentRak.url, {
                 download: true,
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
                     const data = results.data;
-                    if (data.length === 0) return;
+                    if (data.length === 0) {
+                        resetDashboardEmpty();
+                        return;
+                    }
 
                     const keys = Object.keys(data[0]);
                     const colTanggal = keys[1];
@@ -287,7 +353,6 @@
                     filterDataByDate();
                     renderShiftChart(shift1Count, shift2Count);
 
-                    // Render Tabel Riwayat Utama (5 Terbaru)
                     const tableBody = document.getElementById('table-body');
                     tableBody.innerHTML = '';
                     const latestFive = [...data].reverse().slice(0, 5);
@@ -305,7 +370,6 @@
                         tableBody.appendChild(tr);
                     });
 
-                    // Render Tabel Modal Semua Riwayat
                     const modalSemuaRiwayatBody = document.getElementById('modal-semua-riwayat-body');
                     modalSemuaRiwayatBody.innerHTML = '';
                     
@@ -327,9 +391,16 @@
                 },
                 error: function(err) {
                     console.error("Gagal membaca data:", err);
-                    document.getElementById('live-status').innerText = 'Koneksi Gagal';
                 }
             });
+        }
+
+        function resetDashboardEmpty() {
+            document.getElementById('total-inspeksi').innerText = '0';
+            document.getElementById('last-date').innerText = '-';
+            document.getElementById('last-shift').innerText = '-';
+            document.getElementById('count-penyok').innerText = '0';
+            document.getElementById('table-body').innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">Belum ada data pada rak ini.</td></tr>`;
         }
 
         function setQuickDate(type) {
@@ -472,8 +543,13 @@
             });
         }
 
-        loadData();
-        setInterval(() => { loadData(); }, 10000);
+        // Jalankan saat pertama kali dibuka
+        initDropdown();
+
+        // Auto-refresh data aktif setiap 15 detik di background
+        setInterval(() => {
+            loadData();
+        }, 15000);
     </script>
 </body>
 </html>
