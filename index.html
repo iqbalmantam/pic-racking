@@ -25,7 +25,7 @@
 <body class="bg-slate-50 font-sans antialiased text-slate-800">
 
     <div class="max-w-7xl mx-auto px-4 py-8">
-        <!-- Header Utama & Dropdown Pilih Rak -->
+        <!-- Header Utama & Tombol Sinkronisasi -->
         <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
             <div>
                 <div class="flex items-center gap-2">
@@ -39,8 +39,11 @@
             </div>
             
             <div class="flex flex-col md:flex-row items-start md:items-center gap-3 w-full md:w-auto">
-                <!-- TOMBOL EKSPOR & CETAK -->
-                <div class="flex items-center gap-2 no-print">
+                <!-- TOMBOL SINKRONISASI, EKSPOR & CETAK -->
+                <div class="flex items-center gap-2 no-print flex-wrap">
+                    <button onclick="syncData()" id="sync-btn" title="Tarik data terbaru dari seluruh sheet PIC" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5">
+                        🔄 Sinkronkan Data
+                    </button>
                     <button onclick="exportToCSV()" title="Unduh Data CSV/Excel" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5">
                         📥 Unduh Excel
                     </button>
@@ -325,7 +328,6 @@
     </div>
 
     <script>
-        // URL WEB APP GOOGLE APPS SCRIPT ANDA
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxbO6R40dq3NbNo6jE5FRV3wQbysvvk74suPLmu2EhojEjWIIZkqh4j_N57v9HGTeteTQ/exec";
 
         const ALL_RAK_NAMES = [
@@ -441,7 +443,36 @@
                 })
                 .catch(err => {
                     console.error("Gagal mengambil data dari GAS:", err);
-                    alert("Gagal memuat data Master Database. Pastikan URL Web App benar.");
+                    alert("Gagal memuat data Master Database.");
+                });
+        }
+
+        // FUNGSI UNTUK SINKRONISASI MANUAL DARI TOMBOL
+        function syncData() {
+            const btn = document.getElementById('sync-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Menyelaraskan...';
+            btn.disabled = true;
+
+            fetch(GAS_WEB_APP_URL + "?action=sync")
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 1) {
+                        globalMasterRows = data.slice(1);
+                        loadData();
+                        checkUncheckedRaks();
+                        alert("Berhasil! Data telah disinkronkan dari seluruh Sheet PIC.");
+                    } else {
+                        alert("Sinkronisasi selesai, namun data kosong.");
+                    }
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                })
+                .catch(err => {
+                    console.error("Gagal sinkronisasi:", err);
+                    alert("Gagal melakukan sinkronisasi data.");
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
                 });
         }
 
