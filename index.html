@@ -447,7 +447,6 @@
                 });
         }
 
-        // FUNGSI UNTUK SINKRONISASI MANUAL DARI TOMBOL
         function syncData() {
             const btn = document.getElementById('sync-btn');
             const originalText = btn.innerHTML;
@@ -522,7 +521,12 @@
 
             const latest = globalSemuaRiwayatData[globalSemuaRiwayatData.length - 1];
             if (latest) {
-                document.getElementById('last-date').innerText = latest.tanggal;
+                // DIPERBAIKI: Mengambil tanggal laporan asli yang bersih, bukan timestamp mentah
+                let cleanDate = latest.tanggal;
+                if (cleanDate.includes('T')) {
+                    cleanDate = cleanDate.split('T')[0];
+                }
+                document.getElementById('last-date').innerText = cleanDate;
                 document.getElementById('last-shift').innerText = latest.shift;
             }
 
