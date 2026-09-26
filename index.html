@@ -37,7 +37,7 @@
             <!-- DROPDOWN PILIH RAK / PIC -->
             <div class="w-full md:w-auto flex flex-col gap-1">
                 <label for="rakSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rak & PIC:</label>
-                <select id="rakSelect" onchange="changeRak()" class="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-blue-500 shadow-sm">
+                <select id="rakSelect" onchange="loadData()" class="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-blue-500 shadow-sm">
                     <!-- Opsi diisi otomatis -->
                 </select>
             </div>
@@ -46,10 +46,10 @@
         <!-- Kartu Ringkasan (KPI Cards) -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Inspeksi Keseluruhan</p>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Inspeksi</p>
                 <div class="flex items-baseline justify-between mt-2">
                     <h3 id="total-inspeksi" class="text-3xl font-extrabold text-slate-900">0</h3>
-                    <span class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">Semua Rak</span>
+                    <span id="label-info-kpi" class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">Semua Rak</span>
                 </div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
@@ -126,7 +126,7 @@
                 
                 <!-- Kotak Daftar Rak Kosong -->
                 <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 flex-1 overflow-y-auto max-h-60 bg-slate-50/50 text-sm text-slate-600">
-                    <p class="text-center text-slate-400 italic mt-6">Memuat data pemeriksaan seluruh rak...</p>
+                    <p class="text-center text-slate-400 italic mt-6">Memuat status pemeriksaan...</p>
                 </div>
             </div>
         </div>
@@ -136,7 +136,7 @@
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
                 <div>
                     <h2 class="text-base font-bold text-slate-800">Riwayat Inspeksi Terbaru</h2>
-                    <p class="text-xs text-slate-500">Menampilkan data gabungan pemeriksaan terbaru</p>
+                    <p class="text-xs text-slate-500">Menampilkan data laporan pemeriksaan terbaru</p>
                 </div>
                 <button onclick="openSemuaRiwayatModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg shadow-sm transition font-medium">
                     Tampilkan Semua Data
@@ -187,7 +187,7 @@
                 </table>
             </div>
             <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                <button onclick="closeDefectModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
+                <button onclick="closeDefectModal()" class="bg-slate-800 hover:bg-gray-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
             </div>
         </div>
     </div>
@@ -227,7 +227,7 @@
             <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <div>
                     <h3 class="text-base font-bold text-slate-900">Semua Riwayat Inspeksi</h3>
-                    <p class="text-xs text-slate-500">Menampilkan seluruh data gabungan laporan pemeriksaan</p>
+                    <p class="text-xs text-slate-500">Menampilkan seluruh data laporan pemeriksaan</p>
                 </div>
                 <button onclick="closeSemuaRiwayatModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
             </div>
@@ -297,6 +297,16 @@
         let globalSemuaRiwayatData = [];
         let allRaksCache = {};
 
+        function findColumnKey(keys, keywords) {
+            for (let key of keys) {
+                const lower = key.toLowerCase();
+                for (let kw of keywords) {
+                    if (lower.includes(kw)) return key;
+                }
+            }
+            return null;
+        }
+
         function initDashboard() {
             const select = document.getElementById('rakSelect');
             select.innerHTML = '';
@@ -307,16 +317,12 @@
                 select.appendChild(option);
             });
 
-            // Set default pilihan pertama ke "SEMUA RAK" (index 0)
-            select.value = 0;
-
+            select.value = 0; // Default ke "Semua Rak"
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('checkDate').value = todayStr;
 
             preloadAllRaks();
         }
-
-        function changeRak() { loadData(); }
 
         function parseDateString(dateStr) {
             if (!dateStr) return null;
@@ -329,7 +335,7 @@
 
         function preloadAllRaks() {
             let loadedCount = 0;
-            const totalRaksToLoad = RAK_DATA.length - 1; // Kecuali indeks 0 (ALL)
+            const totalRaks = RAK_DATA.length - 1;
 
             for (let i = 1; i < RAK_DATA.length; i++) {
                 const rak = RAK_DATA[i];
@@ -340,14 +346,14 @@
                     complete: function(res) {
                         allRaksCache[i] = { name: rak.name, rows: res.data };
                         loadedCount++;
-                        if (loadedCount === totalRaksToLoad) {
-                            loadData(); // Jalankan load data utama setelah semua cache siap
+                        if (loadedCount === totalRaks) {
+                            loadData();
                         }
                         checkUncheckedRaks();
                     },
                     error: function() {
                         loadedCount++;
-                        if (loadedCount === totalRaksToLoad) {
+                        if (loadedCount === totalRaks) {
                             loadData();
                         }
                     }
@@ -364,36 +370,38 @@
             globalSemuaRiwayatData = [];
 
             if (selectedIndex === 0) {
-                // KONDISI: SEMUA RAK (SUMMARY KESELURUHAN)
                 document.getElementById('pic-name').innerText = "🌐 Summary Keseluruhan Gudang";
-                
+                document.getElementById('label-info-kpi').innerText = "Semua Rak";
+
                 Object.keys(allRaksCache).forEach(idx => {
                     const rakObj = allRaksCache[idx];
-                    if (!rakObj || !rakObj.rows) return;
+                    if (!rakObj || !rakObj.rows || rakObj.rows.length === 0) return;
+
+                    const keys = Object.keys(rakObj.rows[0]);
+                    const colTgl = findColumnKey(keys, ['tanggal', 'date', 'waktu']);
+                    const colShift = findColumnKey(keys, ['shift']);
+                    const colPallet = findColumnKey(keys, ['pallet', 'rusak']);
+                    const colSegel = findColumnKey(keys, ['segel']);
+                    const colPenyok = findColumnKey(keys, ['penyok', 'produk']);
+                    const colLabel = findColumnKey(keys, ['label']);
 
                     rakObj.rows.forEach(row => {
-                        const keys = Object.keys(row);
-                        const colTanggal = keys[1];
-                        const colShift = keys[2];
-                        const colPallet = keys[3];
-                        const colSegel = keys[5];
-                        const colPenyok = keys[7];
-                        const colLabel = keys[11];
+                        const tgl = colTgl ? row[colTgl] || '-' : '-';
+                        const shift = colShift ? row[colShift] || '-' : '-';
+                        const pallet = colPallet ? row[colPallet] || '-' : '-';
+                        const segel = colSegel ? row[colSegel] || '-' : '-';
+                        const penyok = colPenyok ? row[colPenyok] || '-' : '-';
+                        const label = colLabel ? row[colLabel] || '-' : '-';
 
-                        const tgl = row[colTanggal] || '-';
-                        const shift = row[colShift] || '-';
-                        const statusPenyok = row[colPenyok];
-
-                        // Tambahkan properti tambahan nama rak untuk referensi
-                        const enrichedRow = { ...row, _rakName: rakObj.name };
+                        const enrichedRow = { ...row, _rakName: rakObj.name, _colTgl: colTgl, _colShift: colShift, _colPallet: colPallet, _colSegel: colSegel, _colPenyok: colPenyok, _colLabel: colLabel };
                         globalRawRows.push(enrichedRow);
 
-                        if (statusPenyok && statusPenyok.toLowerCase().includes('ya')) {
+                        if (penyok.toLowerCase().includes('ya')) {
                             globalPenyokData.push({
                                 rakName: rakObj.name,
                                 tanggal: tgl,
                                 shift: shift,
-                                status: statusPenyok,
+                                status: penyok,
                                 dateObj: parseDateString(tgl)
                             });
                         }
@@ -402,44 +410,47 @@
                             rakName: rakObj.name,
                             tanggal: tgl,
                             shift: shift,
-                            pallet: row[colPallet] || '-',
-                            segel: row[colSegel] || '-',
-                            penyok: row[colPenyok] || '-',
-                            label: row[colLabel] || '-',
+                            pallet: pallet,
+                            segel: segel,
+                            penyok: penyok,
+                            label: label,
                             dateObj: parseDateString(tgl)
                         });
                     });
                 });
             } else {
-                // KONDISI: RAK SPESIFIK
                 const currentRak = RAK_DATA[selectedIndex];
                 const partsName = currentRak.name.split(' - ');
                 document.getElementById('pic-name').innerText = partsName[1] || currentRak.name;
+                document.getElementById('label-info-kpi').innerText = partsName[0];
 
                 const rakObj = allRaksCache[selectedIndex];
-                if (rakObj && rakObj.rows) {
-                    globalRawRows = rakObj.rows;
-                    globalRawRows.forEach(row => {
-                        const keys = Object.keys(row);
-                        const colTanggal = keys[1];
-                        const colShift = keys[2];
-                        const colPallet = keys[3];
-                        const colSegel = keys[5];
-                        const colPenyok = keys[7];
-                        const colLabel = keys[11];
+                if (rakObj && rakObj.rows && rakObj.rows.length > 0) {
+                    const keys = Object.keys(rakObj.rows[0]);
+                    const colTgl = findColumnKey(keys, ['tanggal', 'date', 'waktu']);
+                    const colShift = findColumnKey(keys, ['shift']);
+                    const colPallet = findColumnKey(keys, ['pallet', 'rusak']);
+                    const colSegel = findColumnKey(keys, ['segel']);
+                    const colPenyok = findColumnKey(keys, ['penyok', 'produk']);
+                    const colLabel = findColumnKey(keys, ['label']);
 
-                        const tgl = row[colTanggal] || '-';
-                        const shift = row[colShift] || '-';
-                        const statusPenyok = row[colPenyok];
+                    rakObj.rows.forEach(row => {
+                        const tgl = colTgl ? row[colTgl] || '-' : '-';
+                        const shift = colShift ? row[colShift] || '-' : '-';
+                        const pallet = colPallet ? row[colPallet] || '-' : '-';
+                        const segel = colSegel ? row[colSegel] || '-' : '-';
+                        const penyok = colPenyok ? row[colPenyok] || '-' : '-';
+                        const label = colLabel ? row[colLabel] || '-' : '-';
 
-                        row._rakName = currentRak.name;
+                        const enrichedRow = { ...row, _rakName: currentRak.name, _colTgl: colTgl, _colShift: colShift, _colPallet: colPallet, _colSegel: colSegel, _colPenyok: colPenyok, _colLabel: colLabel };
+                        globalRawRows.push(enrichedRow);
 
-                        if (statusPenyok && statusPenyok.toLowerCase().includes('ya')) {
+                        if (penyok.toLowerCase().includes('ya')) {
                             globalPenyokData.push({
                                 rakName: currentRak.name,
                                 tanggal: tgl,
                                 shift: shift,
-                                status: statusPenyok,
+                                status: penyok,
                                 dateObj: parseDateString(tgl)
                             });
                         }
@@ -448,10 +459,10 @@
                             rakName: currentRak.name,
                             tanggal: tgl,
                             shift: shift,
-                            pallet: row[colPallet] || '-',
-                            segel: row[colSegel] || '-',
-                            penyok: row[colPenyok] || '-',
-                            label: row[colLabel] || '-',
+                            pallet: pallet,
+                            segel: segel,
+                            penyok: penyok,
+                            label: label,
                             dateObj: parseDateString(tgl)
                         });
                     });
@@ -466,10 +477,11 @@
             document.getElementById('total-inspeksi').innerText = globalRawRows.length;
             document.getElementById('count-penyok').innerText = globalPenyokData.length;
 
-            const latest = globalRawRows[globalRawRows.length - 1];
-            const keysLatest = Object.keys(latest);
-            document.getElementById('last-date').innerText = latest[keysLatest[1]] || '-';
-            document.getElementById('last-shift').innerText = latest[keysLatest[2]] || '-';
+            const latest = globalSemuaRiwayatData[globalSemuaRiwayatData.length - 1];
+            if (latest) {
+                document.getElementById('last-date').innerText = latest.tanggal;
+                document.getElementById('last-shift').innerText = latest.shift;
+            }
 
             filterDataByDate();
 
@@ -524,11 +536,13 @@
                 const rakObj = allRaksCache[i];
                 if (!rakObj || !rakObj.rows) continue;
 
+                const keys = rakObj.rows.length > 0 ? Object.keys(rakObj.rows[0]) : [];
+                const colTgl = findColumnKey(keys, ['tanggal', 'date', 'waktu']);
+
                 let hasCheckedOnDate = false;
                 rakObj.rows.forEach(row => {
-                    const keys = Object.keys(row);
-                    const colTanggal = keys[1];
-                    const dObj = parseDateString(row[colTanggal]);
+                    const tglVal = colTgl ? row[colTgl] : null;
+                    const dObj = parseDateString(tglVal);
                     if (dObj && dObj.toDateString() === targetDate.toDateString()) {
                         hasCheckedOnDate = true;
                     }
@@ -540,7 +554,7 @@
             }
 
             if (Object.keys(allRaksCache).length === 0) {
-                container.innerHTML = `<p class="text-center text-slate-400 italic mt-6">Memuat data seluruh rak...</p>`;
+                container.innerHTML = `<p class="text-center text-slate-400 italic mt-6">Memuat status pemeriksaan...</p>`;
                 return;
             }
 
@@ -586,15 +600,9 @@
             let countLabelBuruk = 0;
 
             if (globalRawRows.length > 0) {
-                const keys = Object.keys(globalRawRows[0]);
-                const colTanggal = keys[1];
-                const colPallet = keys[3];
-                const colSegel = keys[5];
-                const colPenyok = keys[7];
-                const colLabel = keys[11];
-
                 globalRawRows.forEach(row => {
-                    const dObj = parseDateString(row[colTanggal]);
+                    const tglVal = row._colTgl ? row[row._colTgl] : null;
+                    const dObj = parseDateString(tglVal);
                     if (!dObj) return;
 
                     let pass = true;
@@ -602,10 +610,15 @@
                     if (endDate && dObj > endDate) pass = false;
 
                     if (pass) {
-                        if (row[colPallet] && row[colPallet].toLowerCase().includes('ya')) countPalletRusak++;
-                        if (row[colSegel] && row[colSegel].toLowerCase().includes('tidak')) countSegelBuruk++;
-                        if (row[colPenyok] && row[colPenyok].toLowerCase().includes('ya')) countPenyok++;
-                        if (row[colLabel] && row[colLabel].toLowerCase().includes('tidak')) countLabelBuruk++;
+                        const p = row._colPallet ? row[row._colPallet] : '';
+                        const s = row._colSegel ? row[row._colSegel] : '';
+                        const py = row._colPenyok ? row[row._colPenyok] : '';
+                        const l = row._colLabel ? row[row._colLabel] : '';
+
+                        if (p && p.toLowerCase().includes('ya')) countPalletRusak++;
+                        if (s && s.toLowerCase().includes('tidak')) countSegelBuruk++;
+                        if (py && py.toLowerCase().includes('ya')) countPenyok++;
+                        if (l && l.toLowerCase().includes('tidak')) countLabelBuruk++;
                     }
                 });
             }
@@ -621,13 +634,6 @@
 
         function showDefectDetail(defectIndex) {
             if (globalRawRows.length === 0) return;
-            const keys = Object.keys(globalRawRows[0]);
-            const colTanggal = keys[1];
-            const colShift = keys[2];
-            const colPallet = keys[3];
-            const colSegel = keys[5];
-            const colPenyok = keys[7];
-            const colLabel = keys[11];
 
             const startVal = document.getElementById('startDate').value;
             const endVal = document.getElementById('endDate').value;
@@ -638,7 +644,8 @@
             let filteredList = [];
 
             globalRawRows.forEach(row => {
-                const dObj = parseDateString(row[colTanggal]);
+                const tglVal = row._colTgl ? row[row._colTgl] : null;
+                const dObj = parseDateString(tglVal);
                 if (!dObj) return;
 
                 let pass = true;
@@ -647,28 +654,32 @@
                 if (!pass) return;
 
                 const rakName = row._rakName || '-';
-                const tgl = row[colTanggal] || '-';
-                const shift = row[colShift] || '-';
+                const tgl = tglVal || '-';
+                const shift = row._colShift ? row[row._colShift] || '-' : '-';
+                const p = row._colPallet ? row[row._colPallet] : '';
+                const s = row._colSegel ? row[row._colSegel] : '';
+                const py = row._colPenyok ? row[row._colPenyok] : '';
+                const l = row._colLabel ? row[row._colLabel] : '';
 
                 if (defectIndex === 0) {
                     modalTitle = "Detail Riwayat: Pallet Rusak (Ya)";
-                    if (row[colPallet] && row[colPallet].toLowerCase().includes('ya')) {
-                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Pallet Rusak: " + row[colPallet] });
+                    if (p && p.toLowerCase().includes('ya')) {
+                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Pallet Rusak: " + p });
                     }
                 } else if (defectIndex === 1) {
                     modalTitle = "Detail Riwayat: Segel Tidak Baik";
-                    if (row[colSegel] && row[colSegel].toLowerCase().includes('tidak')) {
-                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Segel: " + row[colSegel] });
+                    if (s && s.toLowerCase().includes('tidak')) {
+                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Segel: " + s });
                     }
                 } else if (defectIndex === 2) {
                     modalTitle = "Detail Riwayat: Produk Penyok (Ya)";
-                    if (row[colPenyok] && row[colPenyok].toLowerCase().includes('ya')) {
-                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Produk Penyok: " + row[colPenyok] });
+                    if (py && py.toLowerCase().includes('ya')) {
+                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Produk Penyok: " + py });
                     }
                 } else if (defectIndex === 3) {
                     modalTitle = "Detail Riwayat: Label Tidak Baik";
-                    if (row[colLabel] && row[colLabel].toLowerCase().includes('tidak')) {
-                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Label: " + row[colLabel] });
+                    if (l && l.toLowerCase().includes('tidak')) {
+                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Label: " + l });
                     }
                 }
             });
