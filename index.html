@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Multi-PIC Racking Gudang</title>
+    <title>Dashboard Monitoring & Audit Racking Gudang</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
@@ -38,7 +38,7 @@
             <div class="w-full md:w-auto flex flex-col gap-1">
                 <label for="rakSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rak & PIC:</label>
                 <select id="rakSelect" onchange="changeRak()" class="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-blue-500 shadow-sm">
-                    <!-- Opsi akan diisi otomatis lewat JavaScript -->
+                    <!-- Opsi diisi otomatis -->
                 </select>
             </div>
         </header>
@@ -46,7 +46,7 @@
         <!-- Kartu Ringkasan (KPI Cards) -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Inspeksi</p>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Inspeksi Rak Ini</p>
                 <div class="flex items-baseline justify-between mt-2">
                     <h3 id="total-inspeksi" class="text-3xl font-extrabold text-slate-900">0</h3>
                     <span class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">Semua Shift</span>
@@ -59,7 +59,7 @@
                     <span id="last-shift" class="text-xs font-medium text-slate-500 bg-blue-50 text-blue-700 px-2 py-0.5 rounded">-</span>
                 </div>
             </div>
-            <!-- Kartu Temuan Produk Penyok (Klik untuk Detail) -->
+            <!-- Kartu Temuan Produk Penyok -->
             <div onclick="openPenyokModal()" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-amber-300 hover:shadow-md transition group flex flex-col justify-between">
                 <div class="flex justify-between items-center">
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-amber-600 transition">Temuan Produk Penyok</p>
@@ -71,10 +71,10 @@
                 </div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pembaruan Data</p>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Audit Harian</p>
                 <div class="flex items-baseline justify-between mt-2">
-                    <h3 id="last-update" class="text-sm font-semibold text-slate-700">-</h3>
-                    <span class="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded">Otomatis</span>
+                    <h3 class="text-sm font-bold text-emerald-600">Sistem Aktif</h3>
+                    <span class="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded">Realtime</span>
                 </div>
             </div>
         </div>
@@ -100,18 +100,29 @@
             </div>
         </div>
 
-        <!-- Grafik Visualisasi -->
+        <!-- Grafik & Panel Summary Rak Belum Dicek -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Grafik Tren Penyok -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h2 class="text-base font-bold text-slate-800 mb-4">Tren Kejadian Temuan Produk Penyok</h2>
                 <div class="relative h-72 w-full">
                     <canvas id="penyokChart"></canvas>
                 </div>
             </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h2 class="text-base font-bold text-slate-800 mb-4">Distribusi Shift Kerja Inspeksi</h2>
-                <div class="relative h-72 w-full flex justify-center items-center">
-                    <canvas id="shiftChart"></canvas>
+
+            <!-- Panel Summary: Rak Belum Dicek Berdasarkan Tanggal -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800">Summary: Rak Belum Dicek</h2>
+                        <p class="text-xs text-slate-500">Daftar rak yang belum ada laporan pada tanggal tertentu</p>
+                    </div>
+                    <input type="date" id="checkDate" onchange="checkUncheckedRaks()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500 font-semibold">
+                </div>
+                
+                <!-- Kotak Daftar Rak Kosong -->
+                <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 flex-1 overflow-y-auto max-h-60 bg-slate-50/50 text-sm text-slate-600">
+                    <p class="text-center text-slate-400 italic mt-6">Silakan pilih tanggal di atas untuk melihat status pemeriksaan rak.</p>
                 </div>
             </div>
         </div>
@@ -120,8 +131,8 @@
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
                 <div>
-                    <h2 class="text-base font-bold text-slate-800">Riwayat Inspeksi Terakhir</h2>
-                    <p class="text-xs text-slate-500">Menampilkan 5 data laporan pemeriksaan terbaru</p>
+                    <h2 class="text-base font-bold text-slate-800">Riwayat Inspeksi Rak Terpilih</h2>
+                    <p class="text-xs text-slate-500">Menampilkan data laporan pemeriksaan terbaru</p>
                 </div>
                 <button onclick="openSemuaRiwayatModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg shadow-sm transition font-medium">
                     Tampilkan Semua Data
@@ -166,9 +177,7 @@
                             <th class="p-3 pr-6 font-semibold">Status Temuan</th>
                         </tr>
                     </thead>
-                    <tbody id="modal-table-body" class="divide-y divide-slate-100 text-sm text-slate-700">
-                        <!-- Diisi JS -->
-                    </tbody>
+                    <tbody id="modal-table-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
                 </table>
             </div>
             <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
@@ -183,7 +192,7 @@
             <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <div>
                     <h3 class="text-base font-bold text-slate-900">Semua Riwayat Inspeksi</h3>
-                    <p class="text-xs text-slate-500">Menampilkan seluruh data laporan pemeriksaan</p>
+                    <p class="text-xs text-slate-500">Menampilkan seluruh data laporan pemeriksaan rak terpilih</p>
                 </div>
                 <button onclick="closeSemuaRiwayatModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
             </div>
@@ -199,9 +208,7 @@
                             <th class="p-4 font-semibold text-center">Label Baik</th>
                         </tr>
                     </thead>
-                    <tbody id="modal-semua-riwayat-body" class="divide-y divide-slate-100 text-sm text-slate-700">
-                        <!-- Diisi JS -->
-                    </tbody>
+                    <tbody id="modal-semua-riwayat-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
                 </table>
             </div>
             <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
@@ -211,7 +218,7 @@
     </div>
 
     <script>
-        // DAFTAR SELURUH RAK & PIC BESERTA LINK CSV NYA
+        // DAFTAR SELURUH RAK & PIC
         const RAK_DATA = [
             { name: "Rak A01 - Arik Koswara", url: "https://docs.google.com/spreadsheets/d/1rpc8jEhFa8tqfF6viYLY9UTbO65o7VfkXLuh0xihdR0/export?format=csv&gid=181124829" },
             { name: "Rak A02 & A03 - Aris Munandar", url: "https://docs.google.com/spreadsheets/d/1KEE-_6jfxEyJiNn9zNlUXoJtQ9E0VF-I8iQpWvCOkKU/export?format=csv&gid=2114378414" },
@@ -249,13 +256,11 @@
         ];
 
         let penyokChartInstance = null;
-        let shiftChartInstance = null;
         let globalPenyokData = [];
         let globalSemuaRiwayatData = [];
-        let refreshTimer = null;
+        let allRaksCache = {}; // Cache untuk menyimpan data dari semua rak
 
-        // Inisialisasi Dropdown saat halaman pertama kali dimuat
-        function initDropdown() {
+        function initDashboard() {
             const select = document.getElementById('rakSelect');
             select.innerHTML = '';
             RAK_DATA.forEach((rak, index) => {
@@ -264,7 +269,13 @@
                 option.text = rak.name;
                 select.appendChild(option);
             });
+
+            // Set tanggal default untuk cek rak kosong ke hari ini (format YYYY-MM-DD)
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('checkDate').value = todayStr;
+
             loadData();
+            preloadAllRaks();
         }
 
         function changeRak() {
@@ -280,12 +291,12 @@
             return null;
         }
 
+        // Ambil data rak aktif untuk dashboard utama
         function loadData() {
             const select = document.getElementById('rakSelect');
             const selectedIndex = select.value || 0;
             const currentRak = RAK_DATA[selectedIndex];
 
-            // Tampilkan nama PIC di header
             const partsName = currentRak.name.split(' - ');
             document.getElementById('pic-name').innerText = partsName[1] || currentRak.name;
 
@@ -315,8 +326,6 @@
                     document.getElementById('last-shift').innerText = latest[colShift] || '-';
 
                     let totalPenyok = 0;
-                    let shift1Count = 0;
-                    let shift2Count = 0;
                     globalPenyokData = [];
                     globalSemuaRiwayatData = [];
 
@@ -333,9 +342,6 @@
                                 dateObj: parseDateString(tgl)
                             });
                         }
-                        const shift = row[colShift];
-                        if (shift && shift.includes('1')) shift1Count++;
-                        if (shift && shift.includes('2')) shift2Count++;
 
                         globalSemuaRiwayatData.push({
                             tanggal: tgl,
@@ -349,9 +355,7 @@
                     });
 
                     document.getElementById('count-penyok').innerText = totalPenyok;
-
                     filterDataByDate();
-                    renderShiftChart(shift1Count, shift2Count);
 
                     const tableBody = document.getElementById('table-body');
                     tableBody.innerHTML = '';
@@ -386,13 +390,69 @@
                         `;
                         modalSemuaRiwayatBody.appendChild(tr);
                     });
-
-                    document.getElementById('last-update').innerText = new Date().toLocaleTimeString();
                 },
-                error: function(err) {
-                    console.error("Gagal membaca data:", err);
+                error: function(err) { console.error("Gagal parse:", err); }
+            });
+        }
+
+        // Background preload untuk mengecek seluruh rak secara diam-diam guna kebutuhan Summary
+        function preloadAllRaks() {
+            RAK_DATA.forEach((rak, idx) => {
+                Papa.parse(rak.url, {
+                    download: true,
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(res) {
+                        allRaksCache[idx] = res.data;
+                        checkUncheckedRaks(); // Update saat cache masuk
+                    }
+                });
+            });
+        }
+
+        // Logika Utama: Cek Rak mana saja yang belum diperiksa berdasarkan tanggal yang dipilih
+        function checkUncheckedRaks() {
+            const dateInput = document.getElementById('checkDate').value;
+            const container = document.getElementById('unchecked-list');
+            if (!dateInput) return;
+
+            const targetDate = new Date(dateInput);
+            let uncheckedList = [];
+
+            RAK_DATA.forEach((rak, idx) => {
+                const rows = allRaksCache[idx];
+                if (!rows) return; // Jika data belum selesai di-download
+
+                let hasCheckedOnDate = false;
+                rows.forEach(row => {
+                    const keys = Object.keys(row);
+                    const colTanggal = keys[1];
+                    const dObj = parseDateString(row[colTanggal]);
+                    if (dObj && dObj.toDateString() === targetDate.toDateString()) {
+                        hasCheckedOnDate = true;
+                    }
+                });
+
+                if (!hasCheckedOnDate) {
+                    uncheckedList.push(rak.name);
                 }
             });
+
+            if (Object.keys(allRaksCache).length === 0) {
+                container.innerHTML = `<p class="text-center text-slate-400 italic mt-6">Memuat data seluruh rak...</p>`;
+                return;
+            }
+
+            if (uncheckedList.length === 0) {
+                container.innerHTML = `<div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-medium">Luar biasa! Semua rak sudah diperiksa pada tanggal ini.</div>`;
+            } else {
+                let html = `<p class="text-xs font-bold text-red-600 mb-2">Total ${uncheckedList.length} Rak Belum Melaporkan Inspeksi:</p><ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">`;
+                uncheckedList.forEach(name => {
+                    html += `<li><span class="font-semibold text-slate-900">${name}</span></li>`;
+                });
+                html += `</ul>`;
+                container.innerHTML = html;
+            }
         }
 
         function resetDashboardEmpty() {
@@ -406,13 +466,8 @@
         function setQuickDate(type) {
             const today = new Date();
             let start = new Date();
-
-            if (type === '7days') {
-                start.setDate(today.getDate() - 7);
-            } else if (type === 'thisMonth') {
-                start = new Date(today.getFullYear(), today.getMonth(), 1);
-            }
-
+            if (type === '7days') { start.setDate(today.getDate() - 7); }
+            else if (type === 'thisMonth') { start = new Date(today.getFullYear(), today.getMonth(), 1); }
             document.getElementById('startDate').value = start.toISOString().split('T')[0];
             document.getElementById('endDate').value = today.toISOString().split('T')[0];
             filterDataByDate();
@@ -421,27 +476,20 @@
         function filterDataByDate() {
             const startVal = document.getElementById('startDate').value;
             const endVal = document.getElementById('endDate').value;
-
             const startDate = startVal ? new Date(startVal) : null;
             const endDate = endVal ? new Date(endVal) : null;
-
             const penyokPerTanggal = {};
 
             globalPenyokData.forEach(item => {
                 if (!item.dateObj) return;
-
                 let pass = true;
                 if (startDate && item.dateObj < startDate) pass = false;
                 if (endDate && item.dateObj > endDate) pass = false;
-
                 if (pass) {
-                    if (!penyokPerTanggal[item.tanggal]) {
-                        penyokPerTanggal[item.tanggal] = 0;
-                    }
+                    if (!penyokPerTanggal[item.tanggal]) penyokPerTanggal[item.tanggal] = 0;
                     penyokPerTanggal[item.tanggal]++;
                 }
             });
-
             renderPenyokChart(Object.keys(penyokPerTanggal), Object.values(penyokPerTanggal));
         }
 
@@ -454,102 +502,42 @@
         function openPenyokModal() {
             const modalBody = document.getElementById('modal-table-body');
             modalBody.innerHTML = '';
-
             if (globalPenyokData.length === 0) {
                 modalBody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-slate-400">Tidak ada riwayat produk penyok.</td></tr>`;
             } else {
                 [...globalPenyokData].reverse().forEach(item => {
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-amber-50/50 transition";
-                    tr.innerHTML = `
-                        <td class="p-3 pl-6 font-medium whitespace-nowrap">${item.tanggal}</td>
-                        <td class="p-3"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded">${item.shift}</span></td>
-                        <td class="p-3 pr-6 text-red-600 font-semibold">${item.status} (Ditemukan Kerusakan)</td>
-                    `;
+                    tr.innerHTML = `<td class="p-3 pl-6 font-medium whitespace-nowrap">${item.tanggal}</td><td class="p-3"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded">${item.shift}</span></td><td class="p-3 pr-6 text-red-600 font-semibold">${item.status} (Ditemukan Kerusakan)</td>`;
                     modalBody.appendChild(tr);
                 });
             }
             document.getElementById('penyokModal').classList.remove('hidden');
         }
 
-        function closePenyokModal() {
-            document.getElementById('penyokModal').classList.add('hidden');
-        }
-
-        function openSemuaRiwayatModal() {
-            document.getElementById('semuaRiwayatModal').classList.remove('hidden');
-        }
-
-        function closeSemuaRiwayatModal() {
-            document.getElementById('semuaRiwayatModal').classList.add('hidden');
-        }
+        function closePenyokModal() { document.getElementById('penyokModal').classList.add('hidden'); }
+        function openSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.remove('hidden'); }
+        function closeSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.add('hidden'); }
 
         function renderPenyokChart(labels, values) {
             const ctx = document.getElementById('penyokChart').getContext('2d');
             if (penyokChartInstance) penyokChartInstance.destroy();
-
             penyokChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: 'Jumlah Temuan',
-                        data: values,
-                        backgroundColor: '#f59e0b',
-                        borderRadius: 6,
-                        barThickness: 'flex',
-                        maxBarThickness: 40
-                    }]
+                    datasets: [{ label: 'Jumlah Temuan', data: values, backgroundColor: '#f59e0b', borderRadius: 6, barThickness: 'flex', maxBarThickness: 40 }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { 
-                        y: { 
-                            beginAtZero: true,
-                            grid: { color: '#f1f5f9' },
-                            ticks: { stepSize: 1 } 
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
-                    },
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } },
                     plugins: { legend: { display: false } }
                 }
             });
         }
 
-        function renderShiftChart(shift1, shift2) {
-            const ctx = document.getElementById('shiftChart').getContext('2d');
-            if (shiftChartInstance) shiftChartInstance.destroy();
-
-            shiftChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Shift 1', 'Shift 2'],
-                    datasets: [{
-                        data: [shift1, shift2],
-                        backgroundColor: ['#3b82f6', '#38bdf8'],
-                        borderWidth: 0,
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } },
-                    cutout: '70%'
-                }
-            });
-        }
-
-        // Jalankan saat pertama kali dibuka
-        initDropdown();
-
-        // Auto-refresh data aktif setiap 15 detik di background
-        setInterval(() => {
-            loadData();
-        }, 15000);
+        // Jalankan inisialisasi awal
+        initDashboard();
     </script>
 </body>
 </html>
