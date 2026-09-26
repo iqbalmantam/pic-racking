@@ -104,7 +104,10 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <!-- Grafik Komparasi Jenis Masalah / Kerusakan -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h2 class="text-base font-bold text-slate-800 mb-1">Komparasi Jenis Temuan Masalah</h2>
+                <div class="flex justify-between items-start mb-1">
+                    <h2 class="text-base font-bold text-slate-800">Komparasi Jenis Temuan Masalah</h2>
+                    <span class="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded animate-pulse">Klik Batang Grafik untuk Detail</span>
+                </div>
                 <p class="text-xs text-slate-400 mb-4">Akumulasi ketidaksesuaian standar pada rentang tanggal terpilih</p>
                 <div class="relative h-72 w-full">
                     <canvas id="defectChart"></canvas>
@@ -155,6 +158,34 @@
                         <!-- Data dimasukkan lewat JS -->
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL POPUP DETAIL KERUSAKAN GRAFIK -->
+    <div id="defectModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div>
+                    <h3 id="defect-modal-title" class="text-base font-bold text-slate-900">Detail Riwayat Temuan</h3>
+                    <p class="text-xs text-slate-500">Daftar inspeksi berdasarkan kategori kerusakan yang dipilih</p>
+                </div>
+                <button onclick="closeDefectModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
+            </div>
+            <div class="p-0 overflow-y-auto flex-1 modal-body-scroll">
+                <table class="w-full text-left border-collapse">
+                    <thead class="sticky top-0 bg-white shadow-sm">
+                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                            <th class="p-3 pl-6 font-semibold">Tanggal</th>
+                            <th class="p-3 font-semibold">Shift</th>
+                            <th class="p-3 pr-6 font-semibold">Status Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-defect-table-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+                </table>
+            </div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                <button onclick="closeDefectModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
             </div>
         </div>
     </div>
@@ -470,7 +501,6 @@
             filterDataByDate();
         }
 
-        // Filter data dan hitung komparasi jenis kerusakan untuk grafik
         function filterDataByDate() {
             const startVal = document.getElementById('startDate').value;
             const endVal = document.getElementById('endDate').value;
@@ -484,11 +514,11 @@
 
             if (globalRawRows.length > 0) {
                 const keys = Object.keys(globalRawRows[0]);
-                const colTanggal = keys[1];
                 const colPallet = keys[3];
                 const colSegel = keys[5];
                 const colPenyok = keys[7];
                 const colLabel = keys[11];
+                const colTanggal = keys[1];
 
                 globalRawRows.forEach(row => {
                     const dObj = parseDateString(row[colTanggal]);
@@ -516,6 +546,86 @@
             filterDataByDate();
         }
 
+        // Fungsi Membuka Modal Detail Berdasarkan Batang Grafik yang Diklik
+        function showDefectDetail(defectIndex) {
+            if (globalRawRows.length === 0) return;
+            const keys = Object.keys(globalRawRows[0]);
+            const colTanggal = keys[1];
+            const colShift = keys[2];
+            const colPallet = keys[3];
+            const colSegel = keys[5];
+            const colPenyok = keys[7];
+            const colLabel = keys[11];
+
+            const startVal = document.getElementById('startDate').value;
+            const endVal = document.getElementById('endDate').value;
+            const startDate = startVal ? new Date(startVal) : null;
+            const endDate = endVal ? new Date(endVal) : null;
+
+            let modalTitle = "";
+            let filteredList = [];
+
+            globalRawRows.forEach(row => {
+                const dObj = parseDateString(row[colTanggal]);
+                if (!dObj) return;
+
+                let pass = true;
+                if (startDate && dObj < startDate) pass = false;
+                if (endDate && dObj > endDate) pass = false;
+                if (!pass) return;
+
+                const tgl = row[colTanggal] || '-';
+                const shift = row[colShift] || '-';
+
+                if (defectIndex === 0) {
+                    modalTitle = "Detail Riwayat: Pallet Rusak (Ya)";
+                    if (row[colPallet] && row[colPallet].toLowerCase().includes('ya')) {
+                        filteredList.push({ tanggal: tgl, shift: shift, status: "Pallet Rusak: " + row[colPallet] });
+                    }
+                } else if (defectIndex === 1) {
+                    modalTitle = "Detail Riwayat: Segel Tidak Baik";
+                    if (row[colSegel] && row[colSegel].toLowerCase().includes('tidak')) {
+                        filteredList.push({ tanggal: tgl, shift: shift, status: "Segel: " + row[colSegel] });
+                    }
+                } else if (defectIndex === 2) {
+                    modalTitle = "Detail Riwayat: Produk Penyok (Ya)";
+                    if (row[colPenyok] && row[colPenyok].toLowerCase().includes('ya')) {
+                        filteredList.push({ tanggal: tgl, shift: shift, status: "Produk Penyok: " + row[colPenyok] });
+                    }
+                } else if (defectIndex === 3) {
+                    modalTitle = "Detail Riwayat: Label Tidak Baik";
+                    if (row[colLabel] && row[colLabel].toLowerCase().includes('tidak')) {
+                        filteredList.push({ tanggal: tgl, shift: shift, status: "Label: " + row[colLabel] });
+                    }
+                }
+            });
+
+            document.getElementById('defect-modal-title').innerText = modalTitle;
+            const modalBody = document.getElementById('modal-defect-table-body');
+            modalBody.innerHTML = '';
+
+            if (filteredList.length === 0) {
+                modalBody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-slate-400">Tidak ada riwayat temuan untuk kategori ini pada rentang tanggal tersebut.</td></tr>`;
+            } else {
+                [...filteredList].reverse().forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition";
+                    tr.innerHTML = `
+                        <td class="p-3 pl-6 font-medium whitespace-nowrap">${item.tanggal}</td>
+                        <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${item.shift}</span></td>
+                        <td class="p-3 pr-6 text-red-600 font-semibold">${item.status}</td>
+                    `;
+                    modalBody.appendChild(tr);
+                });
+            }
+
+            document.getElementById('defectModal').classList.remove('hidden');
+        }
+
+        function closeDefectModal() {
+            document.getElementById('defectModal').classList.add('hidden');
+        }
+
         function openPenyokModal() {
             const modalBody = document.getElementById('modal-table-body');
             modalBody.innerHTML = '';
@@ -536,7 +646,7 @@
         function openSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.remove('hidden'); }
         function closeSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.add('hidden'); }
 
-        // Render Grafik Komparasi Jenis Kerusakan (Bar Chart multi-warna)
+        // Render Grafik Komparasi dengan Event Click Interaktif
         function renderDefectChart(pallet, segel, penyok, label) {
             const ctx = document.getElementById('defectChart').getContext('2d');
             if (defectChartInstance) defectChartInstance.destroy();
@@ -555,6 +665,12 @@
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
+                    onClick: function(event, elements) {
+                        if (elements.length > 0) {
+                            const clickedIndex = elements[0].index;
+                            showDefectDetail(clickedIndex);
+                        }
+                    },
                     scales: { 
                         y: { 
                             beginAtZero: true, 
