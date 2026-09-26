@@ -187,7 +187,7 @@
                 </table>
             </div>
             <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                <button onclick="closeDefectModal()" class="bg-slate-800 hover:bg-gray-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
+                <button onclick="closeDefectModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
             </div>
         </div>
     </div>
@@ -297,11 +297,10 @@
         let globalSemuaRiwayatData = [];
         let allRaksCache = {};
 
-        function findColumnKey(keys, keywords) {
-            for (let key of keys) {
-                const lower = key.toLowerCase();
-                for (let kw of keywords) {
-                    if (lower.includes(kw)) return key;
+        function findPreciseColumn(keys, targetKeywords) {
+            for (let kw of targetKeywords) {
+                for (let key of keys) {
+                    if (key.toLowerCase().includes(kw)) return key;
                 }
             }
             return null;
@@ -378,12 +377,12 @@
                     if (!rakObj || !rakObj.rows || rakObj.rows.length === 0) return;
 
                     const keys = Object.keys(rakObj.rows[0]);
-                    const colTgl = findColumnKey(keys, ['tanggal', 'date', 'waktu']);
-                    const colShift = findColumnKey(keys, ['shift']);
-                    const colPallet = findColumnKey(keys, ['pallet', 'rusak']);
-                    const colSegel = findColumnKey(keys, ['segel']);
-                    const colPenyok = findColumnKey(keys, ['penyok', 'produk']);
-                    const colLabel = findColumnKey(keys, ['label']);
+                    const colTgl = findPreciseColumn(keys, ['tanggal', 'date', 'waktu']);
+                    const colShift = findPreciseColumn(keys, ['shift']);
+                    const colPallet = findPreciseColumn(keys, ['pallet']);
+                    const colSegel = findPreciseColumn(keys, ['segel']);
+                    const colPenyok = findPreciseColumn(keys, ['penyok']);
+                    const colLabel = findPreciseColumn(keys, ['label']);
 
                     rakObj.rows.forEach(row => {
                         const tgl = colTgl ? row[colTgl] || '-' : '-';
@@ -393,10 +392,25 @@
                         const penyok = colPenyok ? row[colPenyok] || '-' : '-';
                         const label = colLabel ? row[colLabel] || '-' : '-';
 
-                        const enrichedRow = { ...row, _rakName: rakObj.name, _colTgl: colTgl, _colShift: colShift, _colPallet: colPallet, _colSegel: colSegel, _colPenyok: colPenyok, _colLabel: colLabel };
+                        const enrichedRow = { 
+                            ...row, 
+                            _rakName: rakObj.name, 
+                            _colTgl: colTgl, 
+                            _colShift: colShift, 
+                            _colPallet: colPallet, 
+                            _colSegel: colSegel, 
+                            _colPenyok: colPenyok, 
+                            _colLabel: colLabel 
+                        };
                         globalRawRows.push(enrichedRow);
 
-                        if (penyok.toLowerCase().includes('ya')) {
+                        // Strict check untuk status kerusakan (harus persis "ya" atau "tidak")
+                        const pVal = pallet.trim().toLowerCase();
+                        const sVal = segel.trim().toLowerCase();
+                        const pyVal = penyok.trim().toLowerCase();
+                        const lVal = label.trim().toLowerCase();
+
+                        if (pyVal === 'ya') {
                             globalPenyokData.push({
                                 rakName: rakObj.name,
                                 tanggal: tgl,
@@ -427,12 +441,12 @@
                 const rakObj = allRaksCache[selectedIndex];
                 if (rakObj && rakObj.rows && rakObj.rows.length > 0) {
                     const keys = Object.keys(rakObj.rows[0]);
-                    const colTgl = findColumnKey(keys, ['tanggal', 'date', 'waktu']);
-                    const colShift = findColumnKey(keys, ['shift']);
-                    const colPallet = findColumnKey(keys, ['pallet', 'rusak']);
-                    const colSegel = findColumnKey(keys, ['segel']);
-                    const colPenyok = findColumnKey(keys, ['penyok', 'produk']);
-                    const colLabel = findColumnKey(keys, ['label']);
+                    const colTgl = findPreciseColumn(keys, ['tanggal', 'date', 'waktu']);
+                    const colShift = findPreciseColumn(keys, ['shift']);
+                    const colPallet = findPreciseColumn(keys, ['pallet']);
+                    const colSegel = findPreciseColumn(keys, ['segel']);
+                    const colPenyok = findPreciseColumn(keys, ['penyok']);
+                    const colLabel = findPreciseColumn(keys, ['label']);
 
                     rakObj.rows.forEach(row => {
                         const tgl = colTgl ? row[colTgl] || '-' : '-';
@@ -442,10 +456,21 @@
                         const penyok = colPenyok ? row[colPenyok] || '-' : '-';
                         const label = colLabel ? row[colLabel] || '-' : '-';
 
-                        const enrichedRow = { ...row, _rakName: currentRak.name, _colTgl: colTgl, _colShift: colShift, _colPallet: colPallet, _colSegel: colSegel, _colPenyok: colPenyok, _colLabel: colLabel };
+                        const enrichedRow = { 
+                            ...row, 
+                            _rakName: currentRak.name, 
+                            _colTgl: colTgl, 
+                            _colShift: colShift, 
+                            _colPallet: colPallet, 
+                            _colSegel: colSegel, 
+                            _colPenyok: colPenyok, 
+                            _colLabel: colLabel 
+                        };
                         globalRawRows.push(enrichedRow);
 
-                        if (penyok.toLowerCase().includes('ya')) {
+                        const pyVal = penyok.trim().toLowerCase();
+
+                        if (pyVal === 'ya') {
                             globalPenyokData.push({
                                 rakName: currentRak.name,
                                 tanggal: tgl,
@@ -498,7 +523,7 @@
                     <td class="p-4"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${item.shift}</span></td>
                     <td class="p-4">${item.pallet}</td>
                     <td class="p-4">${item.segel}</td>
-                    <td class="p-4"><span class="${item.penyok === 'Ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${item.penyok}</span></td>
+                    <td class="p-4"><span class="${item.penyok.toLowerCase() === 'ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${item.penyok}</span></td>
                     <td class="p-4">${item.label}</td>
                 `;
                 tableBody.appendChild(tr);
@@ -515,10 +540,10 @@
                     <td class="p-4 pl-6 font-semibold text-xs text-slate-700">${item.rakName}</td>
                     <td class="p-4 font-medium whitespace-nowrap">${item.tanggal}</td>
                     <td class="p-4"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${item.shift}</span></td>
-                    <td class="p-4 text-center ${item.pallet === 'Ya' ? 'text-red-600 font-semibold' : ''}">${item.pallet}</td>
-                    <td class="p-4 text-center ${item.segel === 'Tidak' ? 'text-red-600 font-semibold' : ''}">${item.segel}</td>
-                    <td class="p-4 text-center ${item.penyok === 'Ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${item.penyok}</td>
-                    <td class="p-4 text-center ${item.label === 'Tidak' ? 'text-red-600 font-semibold' : ''}">${item.label}</td>
+                    <td class="p-4 text-center ${item.pallet.toLowerCase() === 'ya' ? 'text-red-600 font-semibold' : ''}">${item.pallet}</td>
+                    <td class="p-4 text-center ${item.segel.toLowerCase() === 'tidak' ? 'text-red-600 font-semibold' : ''}">${item.segel}</td>
+                    <td class="p-4 text-center ${item.penyok.toLowerCase() === 'ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${item.penyok}</td>
+                    <td class="p-4 text-center ${item.label.toLowerCase() === 'tidak' ? 'text-red-600 font-semibold' : ''}">${item.label}</td>
                 `;
                 modalSemuaRiwayatBody.appendChild(tr);
             });
@@ -537,7 +562,7 @@
                 if (!rakObj || !rakObj.rows) continue;
 
                 const keys = rakObj.rows.length > 0 ? Object.keys(rakObj.rows[0]) : [];
-                const colTgl = findColumnKey(keys, ['tanggal', 'date', 'waktu']);
+                const colTgl = findPreciseColumn(keys, ['tanggal', 'date', 'waktu']);
 
                 let hasCheckedOnDate = false;
                 rakObj.rows.forEach(row => {
@@ -610,15 +635,15 @@
                     if (endDate && dObj > endDate) pass = false;
 
                     if (pass) {
-                        const p = row._colPallet ? row[row._colPallet] : '';
-                        const s = row._colSegel ? row[row._colSegel] : '';
-                        const py = row._colPenyok ? row[row._colPenyok] : '';
-                        const l = row._colLabel ? row[row._colLabel] : '';
+                        const p = row._colPallet ? row[row._colPallet].trim().toLowerCase() : '';
+                        const s = row._colSegel ? row[row._colSegel].trim().toLowerCase() : '';
+                        const py = row._colPenyok ? row[row._colPenyok].trim().toLowerCase() : '';
+                        const l = row._colLabel ? row[row._colLabel].trim().toLowerCase() : '';
 
-                        if (p && p.toLowerCase().includes('ya')) countPalletRusak++;
-                        if (s && s.toLowerCase().includes('tidak')) countSegelBuruk++;
-                        if (py && py.toLowerCase().includes('ya')) countPenyok++;
-                        if (l && l.toLowerCase().includes('tidak')) countLabelBuruk++;
+                        if (p === 'ya') countPalletRusak++;
+                        if (s === 'tidak') countSegelBuruk++;
+                        if (py === 'ya') countPenyok++;
+                        if (l === 'tidak') countLabelBuruk++;
                     }
                 });
             }
@@ -656,30 +681,30 @@
                 const rakName = row._rakName || '-';
                 const tgl = tglVal || '-';
                 const shift = row._colShift ? row[row._colShift] || '-' : '-';
-                const p = row._colPallet ? row[row._colPallet] : '';
-                const s = row._colSegel ? row[row._colSegel] : '';
-                const py = row._colPenyok ? row[row._colPenyok] : '';
-                const l = row._colLabel ? row[row._colLabel] : '';
+                const p = row._colPallet ? row[row._colPallet].trim().toLowerCase() : '';
+                const s = row._colSegel ? row[row._colSegel].trim().toLowerCase() : '';
+                const py = row._colPenyok ? row[row._colPenyok].trim().toLowerCase() : '';
+                const l = row._colLabel ? row[row._colLabel].trim().toLowerCase() : '';
 
                 if (defectIndex === 0) {
                     modalTitle = "Detail Riwayat: Pallet Rusak (Ya)";
-                    if (p && p.toLowerCase().includes('ya')) {
-                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Pallet Rusak: " + p });
+                    if (p === 'ya') {
+                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Pallet Rusak: Ya" });
                     }
                 } else if (defectIndex === 1) {
                     modalTitle = "Detail Riwayat: Segel Tidak Baik";
-                    if (s && s.toLowerCase().includes('tidak')) {
-                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Segel: " + s });
+                    if (s === 'tidak') {
+                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Segel: Tidak Baik" });
                     }
                 } else if (defectIndex === 2) {
                     modalTitle = "Detail Riwayat: Produk Penyok (Ya)";
-                    if (py && py.toLowerCase().includes('ya')) {
-                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Produk Penyok: " + py });
+                    if (py === 'ya') {
+                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Produk Penyok: Ya" });
                     }
                 } else if (defectIndex === 3) {
                     modalTitle = "Detail Riwayat: Label Tidak Baik";
-                    if (l && l.toLowerCase().includes('tidak')) {
-                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Label: " + l });
+                    if (l === 'tidak') {
+                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Label: Tidak Baik" });
                     }
                 }
             });
