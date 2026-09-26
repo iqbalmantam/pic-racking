@@ -365,6 +365,7 @@
             preloadAllRaks();
         }
 
+        // SMART DATE PARSER (Kebal Format DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD & Timestamp)
         function parseDateString(dateStr) {
             if (!dateStr) return null;
             const dateOnly = dateStr.trim().split(' ')[0]; 
@@ -372,12 +373,31 @@
             if (dateOnly.includes('/')) {
                 const parts = dateOnly.split('/');
                 if (parts.length === 3) {
-                    if (parts[2].length === 4) {
-                        return new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
-                    }
+                    let p0 = parseInt(parts[0], 10);
+                    let p1 = parseInt(parts[1], 10);
+
+                    // Jika format YYYY/MM/DD
                     if (parts[0].length === 4) {
                         return new Date(`${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`);
                     }
+
+                    let year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+                    let month, day;
+
+                    // Deteksi otomatis format hari dan bulan yang valid
+                    if (p0 > 12) {
+                        day = parts[0];
+                        month = parts[1];
+                    } else if (p1 > 12) {
+                        month = parts[0];
+                        day = parts[1];
+                    } else {
+                        // Default aman standar Indonesia (DD/MM/YYYY)
+                        day = parts[0];
+                        month = parts[1];
+                    }
+
+                    return new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
                 }
             } else if (dateOnly.includes('-')) {
                 const parts = dateOnly.split('-');
@@ -658,7 +678,6 @@
             globalAllDefectsList = [];
             let picSubmissionCounts = {};
 
-            // Inisialisasi hitungan untuk semua rak
             for (let i = 1; i < RAK_DATA.length; i++) {
                 picSubmissionCounts[RAK_DATA[i].name] = 0;
             }
@@ -713,7 +732,6 @@
             const tbody = document.getElementById('leaderboard-body');
             tbody.innerHTML = '';
 
-            // Ubah object ke array lalu sort dari submission terbanyak
             let sortedArr = Object.keys(countsObj).map(name => {
                 return { name, count: countsObj[name] };
             }).sort((a, b) => b.count - a.count);
@@ -854,7 +872,6 @@
         function openSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.remove('hidden'); }
         function closeSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.add('hidden'); }
 
-        // Fungsi Ekspor ke File CSV/Excel
         function exportToCSV() {
             if (globalSemuaRiwayatData.length === 0) {
                 alert("Tidak ada data untuk diexport.");
