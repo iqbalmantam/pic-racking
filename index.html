@@ -323,13 +323,30 @@
             preloadAllRaks();
         }
 
+        // Fungsi Parse Tanggal yang Tahan Timestamp/Jam
         function parseDateString(dateStr) {
             if (!dateStr) return null;
-            const parts = dateStr.trim().split('/');
-            if (parts.length === 3) {
-                return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+            const dateOnly = dateStr.trim().split(' ')[0]; 
+
+            if (dateOnly.includes('/')) {
+                const parts = dateOnly.split('/');
+                if (parts.length === 3) {
+                    if (parts[2].length === 4) {
+                        return new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+                    }
+                    if (parts[0].length === 4) {
+                        return new Date(`${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`);
+                    }
+                }
+            } else if (dateOnly.includes('-')) {
+                const parts = dateOnly.split('-');
+                if (parts.length === 3 && parts[0].length === 4) {
+                    return new Date(dateOnly);
+                }
             }
-            return null;
+
+            const fallbackDate = new Date(dateStr);
+            return isNaN(fallbackDate.getTime()) ? null : fallbackDate;
         }
 
         function preloadAllRaks() {
@@ -377,7 +394,7 @@
                     if (!rakObj || !rakObj.rows || rakObj.rows.length === 0) return;
 
                     const keys = Object.keys(rakObj.rows[0]);
-                    const colTgl = findPreciseColumn(keys, ['tanggal', 'date', 'waktu']);
+                    const colTgl = findPreciseColumn(keys, ['tanggal', 'date', 'waktu', 'timestamp']);
                     const colShift = findPreciseColumn(keys, ['shift']);
                     const colPallet = findPreciseColumn(keys, ['pallet']);
                     const colSegel = findPreciseColumn(keys, ['segel']);
@@ -404,11 +421,7 @@
                         };
                         globalRawRows.push(enrichedRow);
 
-                        // Strict check untuk status kerusakan (harus persis "ya" atau "tidak")
-                        const pVal = pallet.trim().toLowerCase();
-                        const sVal = segel.trim().toLowerCase();
                         const pyVal = penyok.trim().toLowerCase();
-                        const lVal = label.trim().toLowerCase();
 
                         if (pyVal === 'ya') {
                             globalPenyokData.push({
@@ -441,7 +454,7 @@
                 const rakObj = allRaksCache[selectedIndex];
                 if (rakObj && rakObj.rows && rakObj.rows.length > 0) {
                     const keys = Object.keys(rakObj.rows[0]);
-                    const colTgl = findPreciseColumn(keys, ['tanggal', 'date', 'waktu']);
+                    const colTgl = findPreciseColumn(keys, ['tanggal', 'date', 'waktu', 'timestamp']);
                     const colShift = findPreciseColumn(keys, ['shift']);
                     const colPallet = findPreciseColumn(keys, ['pallet']);
                     const colSegel = findPreciseColumn(keys, ['segel']);
@@ -554,7 +567,7 @@
             const container = document.getElementById('unchecked-list');
             if (!dateInput) return;
 
-            const targetDate = new Date(dateInput);
+            const targetDateStr = dateInput; 
             let uncheckedList = [];
 
             for (let i = 1; i < RAK_DATA.length; i++) {
@@ -562,14 +575,18 @@
                 if (!rakObj || !rakObj.rows) continue;
 
                 const keys = rakObj.rows.length > 0 ? Object.keys(rakObj.rows[0]) : [];
-                const colTgl = findPreciseColumn(keys, ['tanggal', 'date', 'waktu']);
+                const colTgl = findPreciseColumn(keys, ['tanggal', 'date', 'waktu', 'timestamp']);
 
                 let hasCheckedOnDate = false;
                 rakObj.rows.forEach(row => {
                     const tglVal = colTgl ? row[colTgl] : null;
                     const dObj = parseDateString(tglVal);
-                    if (dObj && dObj.toDateString() === targetDate.toDateString()) {
-                        hasCheckedOnDate = true;
+                    
+                    if (dObj) {
+                        const rowDateStr = dObj.toISOString().split('T')[0];
+                        if (rowDateStr === targetDateStr) {
+                            hasCheckedOnDate = true;
+                        }
                     }
                 });
 
