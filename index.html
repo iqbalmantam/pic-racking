@@ -31,7 +31,7 @@
                     </span>
                 </div>
                 <h1 class="text-2xl font-bold text-slate-900 mt-1">Dashboard Monitoring Racking</h1>
-                <p class="text-sm text-slate-500">Penanggung Jawab (PIC): <span id="pic-name" class="font-semibold text-slate-700">-</span></p>
+                <p class="text-sm text-slate-500">Status Tampilan: <span id="pic-name" class="font-semibold text-blue-600">🌐 Summary Keseluruhan Gudang</span></p>
             </div>
             
             <!-- DROPDOWN PILIH RAK / PIC -->
@@ -46,14 +46,14 @@
         <!-- Kartu Ringkasan (KPI Cards) -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Inspeksi Rak Ini</p>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Inspeksi Keseluruhan</p>
                 <div class="flex items-baseline justify-between mt-2">
                     <h3 id="total-inspeksi" class="text-3xl font-extrabold text-slate-900">0</h3>
-                    <span class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">Semua Shift</span>
+                    <span class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">Semua Rak</span>
                 </div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Inspeksi Terakhir</p>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Inspeksi Terakhir Masuk</p>
                 <div class="flex items-baseline justify-between mt-2">
                     <h3 id="last-date" class="text-lg font-bold text-blue-600">-</h3>
                     <span id="last-shift" class="text-xs font-medium text-slate-500 bg-blue-50 text-blue-700 px-2 py-0.5 rounded">-</span>
@@ -62,7 +62,7 @@
             <!-- Kartu Temuan Produk Penyok -->
             <div onclick="openPenyokModal()" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-amber-300 hover:shadow-md transition group flex flex-col justify-between">
                 <div class="flex justify-between items-center">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-amber-600 transition">Temuan Produk Penyok</p>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-amber-600 transition">Total Temuan Produk Penyok</p>
                     <span class="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded font-bold">Klik Detail</span>
                 </div>
                 <div class="flex items-baseline justify-between mt-2">
@@ -135,8 +135,8 @@
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
                 <div>
-                    <h2 class="text-base font-bold text-slate-800">Riwayat Inspeksi Rak Terpilih</h2>
-                    <p class="text-xs text-slate-500">Menampilkan data laporan pemeriksaan terbaru</p>
+                    <h2 class="text-base font-bold text-slate-800">Riwayat Inspeksi Terbaru</h2>
+                    <p class="text-xs text-slate-500">Menampilkan data gabungan pemeriksaan terbaru</p>
                 </div>
                 <button onclick="openSemuaRiwayatModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg shadow-sm transition font-medium">
                     Tampilkan Semua Data
@@ -146,6 +146,7 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                            <th class="p-4 font-semibold">Rak / PIC</th>
                             <th class="p-4 font-semibold">Tanggal</th>
                             <th class="p-4 font-semibold">Shift</th>
                             <th class="p-4 font-semibold">Pallet Rusak</th>
@@ -176,7 +177,8 @@
                 <table class="w-full text-left border-collapse">
                     <thead class="sticky top-0 bg-white shadow-sm">
                         <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                            <th class="p-3 pl-6 font-semibold">Tanggal</th>
+                            <th class="p-3 pl-6 font-semibold">Rak / PIC</th>
+                            <th class="p-3 font-semibold">Tanggal</th>
                             <th class="p-3 font-semibold">Shift</th>
                             <th class="p-3 pr-6 font-semibold">Status Keterangan</th>
                         </tr>
@@ -204,7 +206,8 @@
                 <table class="w-full text-left border-collapse">
                     <thead class="sticky top-0 bg-white shadow-sm">
                         <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                            <th class="p-3 pl-6 font-semibold">Tanggal</th>
+                            <th class="p-3 pl-6 font-semibold">Rak / PIC</th>
+                            <th class="p-3 font-semibold">Tanggal</th>
                             <th class="p-3 font-semibold">Shift</th>
                             <th class="p-3 pr-6 font-semibold">Status Temuan</th>
                         </tr>
@@ -224,7 +227,7 @@
             <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <div>
                     <h3 class="text-base font-bold text-slate-900">Semua Riwayat Inspeksi</h3>
-                    <p class="text-xs text-slate-500">Menampilkan seluruh data laporan pemeriksaan rak terpilih</p>
+                    <p class="text-xs text-slate-500">Menampilkan seluruh data gabungan laporan pemeriksaan</p>
                 </div>
                 <button onclick="closeSemuaRiwayatModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
             </div>
@@ -232,7 +235,8 @@
                 <table class="w-full text-left border-collapse">
                     <thead class="sticky top-0 bg-white shadow-sm">
                         <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                            <th class="p-4 pl-6 font-semibold">Tanggal</th>
+                            <th class="p-4 pl-6 font-semibold">Rak / PIC</th>
+                            <th class="p-4 font-semibold">Tanggal</th>
                             <th class="p-4 font-semibold">Shift</th>
                             <th class="p-4 font-semibold text-center">Pallet Rusak</th>
                             <th class="p-4 font-semibold text-center">Segel Baik</th>
@@ -251,6 +255,7 @@
 
     <script>
         const RAK_DATA = [
+            { name: "🌐 SEMUA RAK (SUMMARY KESELURUHAN)", url: "ALL" },
             { name: "Rak A01 - Arik Koswara", url: "https://docs.google.com/spreadsheets/d/1rpc8jEhFa8tqfF6viYLY9UTbO65o7VfkXLuh0xihdR0/export?format=csv&gid=181124829" },
             { name: "Rak A02 & A03 - Aris Munandar", url: "https://docs.google.com/spreadsheets/d/1KEE-_6jfxEyJiNn9zNlUXoJtQ9E0VF-I8iQpWvCOkKU/export?format=csv&gid=2114378414" },
             { name: "Rak A04 & A05 - Pangabean H", url: "https://docs.google.com/spreadsheets/d/142POCALpGcVmUbtrXGWW8n9lhgzVfWPFi7K6EuLM3ro/export?format=csv&gid=0" },
@@ -302,10 +307,12 @@
                 select.appendChild(option);
             });
 
+            // Set default pilihan pertama ke "SEMUA RAK" (index 0)
+            select.value = 0;
+
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('checkDate').value = todayStr;
 
-            loadData();
             preloadAllRaks();
         }
 
@@ -320,60 +327,81 @@
             return null;
         }
 
+        function preloadAllRaks() {
+            let loadedCount = 0;
+            const totalRaksToLoad = RAK_DATA.length - 1; // Kecuali indeks 0 (ALL)
+
+            for (let i = 1; i < RAK_DATA.length; i++) {
+                const rak = RAK_DATA[i];
+                Papa.parse(rak.url, {
+                    download: true,
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(res) {
+                        allRaksCache[i] = { name: rak.name, rows: res.data };
+                        loadedCount++;
+                        if (loadedCount === totalRaksToLoad) {
+                            loadData(); // Jalankan load data utama setelah semua cache siap
+                        }
+                        checkUncheckedRaks();
+                    },
+                    error: function() {
+                        loadedCount++;
+                        if (loadedCount === totalRaksToLoad) {
+                            loadData();
+                        }
+                    }
+                });
+            }
+        }
+
         function loadData() {
             const select = document.getElementById('rakSelect');
-            const selectedIndex = select.value || 0;
-            const currentRak = RAK_DATA[selectedIndex];
+            const selectedIndex = parseInt(select.value || 0);
 
-            const partsName = currentRak.name.split(' - ');
-            document.getElementById('pic-name').innerText = partsName[1] || currentRak.name;
+            globalRawRows = [];
+            globalPenyokData = [];
+            globalSemuaRiwayatData = [];
 
-            Papa.parse(currentRak.url, {
-                download: true,
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    globalRawRows = results.data;
-                    if (globalRawRows.length === 0) {
-                        resetDashboardEmpty();
-                        return;
-                    }
+            if (selectedIndex === 0) {
+                // KONDISI: SEMUA RAK (SUMMARY KESELURUHAN)
+                document.getElementById('pic-name').innerText = "🌐 Summary Keseluruhan Gudang";
+                
+                Object.keys(allRaksCache).forEach(idx => {
+                    const rakObj = allRaksCache[idx];
+                    if (!rakObj || !rakObj.rows) return;
 
-                    const keys = Object.keys(globalRawRows[0]);
-                    const colTanggal = keys[1];
-                    const colShift = keys[2];
-                    const colPallet = keys[3];
-                    const colSegel = keys[5];
-                    const colPenyok = keys[7];
-                    const colLabel = keys[11];
+                    rakObj.rows.forEach(row => {
+                        const keys = Object.keys(row);
+                        const colTanggal = keys[1];
+                        const colShift = keys[2];
+                        const colPallet = keys[3];
+                        const colSegel = keys[5];
+                        const colPenyok = keys[7];
+                        const colLabel = keys[11];
 
-                    document.getElementById('total-inspeksi').innerText = globalRawRows.length;
-
-                    const latest = globalRawRows[globalRawRows.length - 1];
-                    document.getElementById('last-date').innerText = latest[colTanggal] || '-';
-                    document.getElementById('last-shift').innerText = latest[colShift] || '-';
-
-                    let totalPenyok = 0;
-                    globalPenyokData = [];
-                    globalSemuaRiwayatData = [];
-
-                    globalRawRows.forEach(row => {
                         const tgl = row[colTanggal] || '-';
+                        const shift = row[colShift] || '-';
                         const statusPenyok = row[colPenyok];
 
+                        // Tambahkan properti tambahan nama rak untuk referensi
+                        const enrichedRow = { ...row, _rakName: rakObj.name };
+                        globalRawRows.push(enrichedRow);
+
                         if (statusPenyok && statusPenyok.toLowerCase().includes('ya')) {
-                            totalPenyok++;
                             globalPenyokData.push({
+                                rakName: rakObj.name,
                                 tanggal: tgl,
-                                shift: row[colShift] || '-',
+                                shift: shift,
                                 status: statusPenyok,
                                 dateObj: parseDateString(tgl)
                             });
                         }
 
                         globalSemuaRiwayatData.push({
+                            rakName: rakObj.name,
                             tanggal: tgl,
-                            shift: row[colShift] || '-',
+                            shift: shift,
                             pallet: row[colPallet] || '-',
                             segel: row[colSegel] || '-',
                             penyok: row[colPenyok] || '-',
@@ -381,61 +409,106 @@
                             dateObj: parseDateString(tgl)
                         });
                     });
-
-                    document.getElementById('count-penyok').innerText = totalPenyok;
-                    filterDataByDate();
-
-                    // Render Tabel Riwayat Terbaru
-                    const tableBody = document.getElementById('table-body');
-                    tableBody.innerHTML = '';
-                    const latestFive = [...globalRawRows].reverse().slice(0, 5);
-
-                    latestFive.forEach(row => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td class="p-4 font-medium">${row[colTanggal] || '-'}</td>
-                            <td class="p-4"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${row[colShift] || '-'}</span></td>
-                            <td class="p-4">${row[colPallet] || '-'}</td>
-                            <td class="p-4">${row[colSegel] || '-'}</td>
-                            <td class="p-4"><span class="${row[colPenyok] === 'Ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${row[colPenyok] || '-'}</span></td>
-                            <td class="p-4">${row[colLabel] || '-'}</td>
-                        `;
-                        tableBody.appendChild(tr);
-                    });
-
-                    // Render Tabel Modal Semua Riwayat
-                    const modalSemuaRiwayatBody = document.getElementById('modal-semua-riwayat-body');
-                    modalSemuaRiwayatBody.innerHTML = '';
-                    
-                    [...globalSemuaRiwayatData].reverse().forEach(item => {
-                        const tr = document.createElement('tr');
-                        tr.className = "hover:bg-slate-50 transition";
-                        tr.innerHTML = `
-                            <td class="p-4 pl-6 font-medium whitespace-nowrap">${item.tanggal}</td>
-                            <td class="p-4"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${item.shift}</span></td>
-                            <td class="p-4 text-center ${item.pallet === 'Ya' ? 'text-red-600 font-semibold' : ''}">${item.pallet}</td>
-                            <td class="p-4 text-center ${item.segel === 'Tidak' ? 'text-red-600 font-semibold' : ''}">${item.segel}</td>
-                            <td class="p-4 text-center ${item.penyok === 'Ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${item.penyok}</td>
-                            <td class="p-4 text-center ${item.label === 'Tidak' ? 'text-red-600 font-semibold' : ''}">${item.label}</td>
-                        `;
-                        modalSemuaRiwayatBody.appendChild(tr);
-                    });
-                },
-                error: function(err) { console.error("Gagal parse:", err); }
-            });
-        }
-
-        function preloadAllRaks() {
-            RAK_DATA.forEach((rak, idx) => {
-                Papa.parse(rak.url, {
-                    download: true,
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(res) {
-                        allRaksCache[idx] = res.data;
-                        checkUncheckedRaks();
-                    }
                 });
+            } else {
+                // KONDISI: RAK SPESIFIK
+                const currentRak = RAK_DATA[selectedIndex];
+                const partsName = currentRak.name.split(' - ');
+                document.getElementById('pic-name').innerText = partsName[1] || currentRak.name;
+
+                const rakObj = allRaksCache[selectedIndex];
+                if (rakObj && rakObj.rows) {
+                    globalRawRows = rakObj.rows;
+                    globalRawRows.forEach(row => {
+                        const keys = Object.keys(row);
+                        const colTanggal = keys[1];
+                        const colShift = keys[2];
+                        const colPallet = keys[3];
+                        const colSegel = keys[5];
+                        const colPenyok = keys[7];
+                        const colLabel = keys[11];
+
+                        const tgl = row[colTanggal] || '-';
+                        const shift = row[colShift] || '-';
+                        const statusPenyok = row[colPenyok];
+
+                        row._rakName = currentRak.name;
+
+                        if (statusPenyok && statusPenyok.toLowerCase().includes('ya')) {
+                            globalPenyokData.push({
+                                rakName: currentRak.name,
+                                tanggal: tgl,
+                                shift: shift,
+                                status: statusPenyok,
+                                dateObj: parseDateString(tgl)
+                            });
+                        }
+
+                        globalSemuaRiwayatData.push({
+                            rakName: currentRak.name,
+                            tanggal: tgl,
+                            shift: shift,
+                            pallet: row[colPallet] || '-',
+                            segel: row[colSegel] || '-',
+                            penyok: row[colPenyok] || '-',
+                            label: row[colLabel] || '-',
+                            dateObj: parseDateString(tgl)
+                        });
+                    });
+                }
+            }
+
+            if (globalRawRows.length === 0) {
+                resetDashboardEmpty();
+                return;
+            }
+
+            document.getElementById('total-inspeksi').innerText = globalRawRows.length;
+            document.getElementById('count-penyok').innerText = globalPenyokData.length;
+
+            const latest = globalRawRows[globalRawRows.length - 1];
+            const keysLatest = Object.keys(latest);
+            document.getElementById('last-date').innerText = latest[keysLatest[1]] || '-';
+            document.getElementById('last-shift').innerText = latest[keysLatest[2]] || '-';
+
+            filterDataByDate();
+
+            // Render Tabel Riwayat Terbaru (5 Teratas)
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = '';
+            const latestFive = [...globalSemuaRiwayatData].reverse().slice(0, 5);
+
+            latestFive.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-4 font-semibold text-xs text-slate-700">${item.rakName}</td>
+                    <td class="p-4 font-medium">${item.tanggal}</td>
+                    <td class="p-4"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${item.shift}</span></td>
+                    <td class="p-4">${item.pallet}</td>
+                    <td class="p-4">${item.segel}</td>
+                    <td class="p-4"><span class="${item.penyok === 'Ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${item.penyok}</span></td>
+                    <td class="p-4">${item.label}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            // Render Tabel Modal Semua Riwayat
+            const modalSemuaRiwayatBody = document.getElementById('modal-semua-riwayat-body');
+            modalSemuaRiwayatBody.innerHTML = '';
+            
+            [...globalSemuaRiwayatData].reverse().forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="p-4 pl-6 font-semibold text-xs text-slate-700">${item.rakName}</td>
+                    <td class="p-4 font-medium whitespace-nowrap">${item.tanggal}</td>
+                    <td class="p-4"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${item.shift}</span></td>
+                    <td class="p-4 text-center ${item.pallet === 'Ya' ? 'text-red-600 font-semibold' : ''}">${item.pallet}</td>
+                    <td class="p-4 text-center ${item.segel === 'Tidak' ? 'text-red-600 font-semibold' : ''}">${item.segel}</td>
+                    <td class="p-4 text-center ${item.penyok === 'Ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${item.penyok}</td>
+                    <td class="p-4 text-center ${item.label === 'Tidak' ? 'text-red-600 font-semibold' : ''}">${item.label}</td>
+                `;
+                modalSemuaRiwayatBody.appendChild(tr);
             });
         }
 
@@ -447,12 +520,12 @@
             const targetDate = new Date(dateInput);
             let uncheckedList = [];
 
-            RAK_DATA.forEach((rak, idx) => {
-                const rows = allRaksCache[idx];
-                if (!rows) return;
+            for (let i = 1; i < RAK_DATA.length; i++) {
+                const rakObj = allRaksCache[i];
+                if (!rakObj || !rakObj.rows) continue;
 
                 let hasCheckedOnDate = false;
-                rows.forEach(row => {
+                rakObj.rows.forEach(row => {
                     const keys = Object.keys(row);
                     const colTanggal = keys[1];
                     const dObj = parseDateString(row[colTanggal]);
@@ -462,9 +535,9 @@
                 });
 
                 if (!hasCheckedOnDate) {
-                    uncheckedList.push(rak.name);
+                    uncheckedList.push(rakObj.name);
                 }
-            });
+            }
 
             if (Object.keys(allRaksCache).length === 0) {
                 container.innerHTML = `<p class="text-center text-slate-400 italic mt-6">Memuat data seluruh rak...</p>`;
@@ -488,7 +561,7 @@
             document.getElementById('last-date').innerText = '-';
             document.getElementById('last-shift').innerText = '-';
             document.getElementById('count-penyok').innerText = '0';
-            document.getElementById('table-body').innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">Belum ada data pada rak ini.</td></tr>`;
+            document.getElementById('table-body').innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">Belum ada data tersedia.</td></tr>`;
         }
 
         function setQuickDate(type) {
@@ -514,11 +587,11 @@
 
             if (globalRawRows.length > 0) {
                 const keys = Object.keys(globalRawRows[0]);
+                const colTanggal = keys[1];
                 const colPallet = keys[3];
                 const colSegel = keys[5];
                 const colPenyok = keys[7];
                 const colLabel = keys[11];
-                const colTanggal = keys[1];
 
                 globalRawRows.forEach(row => {
                     const dObj = parseDateString(row[colTanggal]);
@@ -546,7 +619,6 @@
             filterDataByDate();
         }
 
-        // Fungsi Membuka Modal Detail Berdasarkan Batang Grafik yang Diklik
         function showDefectDetail(defectIndex) {
             if (globalRawRows.length === 0) return;
             const keys = Object.keys(globalRawRows[0]);
@@ -574,28 +646,29 @@
                 if (endDate && dObj > endDate) pass = false;
                 if (!pass) return;
 
+                const rakName = row._rakName || '-';
                 const tgl = row[colTanggal] || '-';
                 const shift = row[colShift] || '-';
 
                 if (defectIndex === 0) {
                     modalTitle = "Detail Riwayat: Pallet Rusak (Ya)";
                     if (row[colPallet] && row[colPallet].toLowerCase().includes('ya')) {
-                        filteredList.push({ tanggal: tgl, shift: shift, status: "Pallet Rusak: " + row[colPallet] });
+                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Pallet Rusak: " + row[colPallet] });
                     }
                 } else if (defectIndex === 1) {
                     modalTitle = "Detail Riwayat: Segel Tidak Baik";
                     if (row[colSegel] && row[colSegel].toLowerCase().includes('tidak')) {
-                        filteredList.push({ tanggal: tgl, shift: shift, status: "Segel: " + row[colSegel] });
+                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Segel: " + row[colSegel] });
                     }
                 } else if (defectIndex === 2) {
                     modalTitle = "Detail Riwayat: Produk Penyok (Ya)";
                     if (row[colPenyok] && row[colPenyok].toLowerCase().includes('ya')) {
-                        filteredList.push({ tanggal: tgl, shift: shift, status: "Produk Penyok: " + row[colPenyok] });
+                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Produk Penyok: " + row[colPenyok] });
                     }
                 } else if (defectIndex === 3) {
                     modalTitle = "Detail Riwayat: Label Tidak Baik";
                     if (row[colLabel] && row[colLabel].toLowerCase().includes('tidak')) {
-                        filteredList.push({ tanggal: tgl, shift: shift, status: "Label: " + row[colLabel] });
+                        filteredList.push({ rakName, tanggal: tgl, shift, status: "Label: " + row[colLabel] });
                     }
                 }
             });
@@ -605,13 +678,14 @@
             modalBody.innerHTML = '';
 
             if (filteredList.length === 0) {
-                modalBody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-slate-400">Tidak ada riwayat temuan untuk kategori ini pada rentang tanggal tersebut.</td></tr>`;
+                modalBody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">Tidak ada riwayat temuan untuk kategori ini pada rentang tanggal tersebut.</td></tr>`;
             } else {
                 [...filteredList].reverse().forEach(item => {
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-slate-50 transition";
                     tr.innerHTML = `
-                        <td class="p-3 pl-6 font-medium whitespace-nowrap">${item.tanggal}</td>
+                        <td class="p-3 pl-6 font-semibold text-xs text-slate-700">${item.rakName}</td>
+                        <td class="p-3 font-medium whitespace-nowrap">${item.tanggal}</td>
                         <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${item.shift}</span></td>
                         <td class="p-3 pr-6 text-red-600 font-semibold">${item.status}</td>
                     `;
@@ -622,20 +696,23 @@
             document.getElementById('defectModal').classList.remove('hidden');
         }
 
-        function closeDefectModal() {
-            document.getElementById('defectModal').classList.add('hidden');
-        }
+        function closeDefectModal() { document.getElementById('defectModal').classList.add('hidden'); }
 
         function openPenyokModal() {
             const modalBody = document.getElementById('modal-table-body');
             modalBody.innerHTML = '';
             if (globalPenyokData.length === 0) {
-                modalBody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-slate-400">Tidak ada riwayat produk penyok.</td></tr>`;
+                modalBody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">Tidak ada riwayat produk penyok.</td></tr>`;
             } else {
                 [...globalPenyokData].reverse().forEach(item => {
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-amber-50/50 transition";
-                    tr.innerHTML = `<td class="p-3 pl-6 font-medium whitespace-nowrap">${item.tanggal}</td><td class="p-3"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded">${item.shift}</span></td><td class="p-3 pr-6 text-red-600 font-semibold">${item.status} (Ditemukan Kerusakan)</td>`;
+                    tr.innerHTML = `
+                        <td class="p-3 pl-6 font-semibold text-xs text-slate-700">${item.rakName}</td>
+                        <td class="p-3 font-medium whitespace-nowrap">${item.tanggal}</td>
+                        <td class="p-3"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded">${item.shift}</span></td>
+                        <td class="p-3 pr-6 text-red-600 font-semibold">${item.status} (Ditemukan Kerusakan)</td>
+                    `;
                     modalBody.appendChild(tr);
                 });
             }
@@ -646,7 +723,6 @@
         function openSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.remove('hidden'); }
         function closeSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.add('hidden'); }
 
-        // Render Grafik Komparasi dengan Event Click Interaktif
         function renderDefectChart(pallet, segel, penyok, label) {
             const ctx = document.getElementById('defectChart').getContext('2d');
             if (defectChartInstance) defectChartInstance.destroy();
@@ -667,19 +743,12 @@
                     responsive: true, maintainAspectRatio: false,
                     onClick: function(event, elements) {
                         if (elements.length > 0) {
-                            const clickedIndex = elements[0].index;
-                            showDefectDetail(clickedIndex);
+                            showDefectDetail(elements[0].index);
                         }
                     },
                     scales: { 
-                        y: { 
-                            beginAtZero: true, 
-                            grid: { color: '#f1f5f9' }, 
-                            ticks: { stepSize: 1 } 
-                        }, 
-                        x: { 
-                            grid: { display: false } 
-                        } 
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, 
+                        x: { grid: { display: false } } 
                     },
                     plugins: { legend: { display: false } }
                 }
