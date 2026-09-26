@@ -371,6 +371,19 @@
         let globalAllDefectsList = [];
         let globalSemuaRiwayatData = [];
 
+        // FUNGSI BANTU UNTUK MEMBERSIHKAN FORMAT TANGGAL
+        function formatDisplayDate(dateStr) {
+            if (!dateStr) return '-';
+            let s = String(dateStr).trim();
+            if (s.includes('T')) {
+                return s.split('T')[0];
+            }
+            if (s.includes(' ')) {
+                return s.split(' ')[0];
+            }
+            return s;
+        }
+
         function initDashboard() {
             const select = document.getElementById('rakSelect');
             select.innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>';
@@ -521,12 +534,7 @@
 
             const latest = globalSemuaRiwayatData[globalSemuaRiwayatData.length - 1];
             if (latest) {
-                // DIPERBAIKI: Mengambil tanggal laporan asli yang bersih, bukan timestamp mentah
-                let cleanDate = latest.tanggal;
-                if (cleanDate.includes('T')) {
-                    cleanDate = cleanDate.split('T')[0];
-                }
-                document.getElementById('last-date').innerText = cleanDate;
+                document.getElementById('last-date').innerText = formatDisplayDate(latest.tanggal);
                 document.getElementById('last-shift').innerText = latest.shift;
             }
 
@@ -540,7 +548,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="p-4 font-semibold text-xs text-slate-700">${item.rakName}</td>
-                    <td class="p-4 font-medium">${item.tanggal}</td>
+                    <td class="p-4 font-medium">${formatDisplayDate(item.tanggal)}</td>
                     <td class="p-4"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${item.shift}</span></td>
                     <td class="p-4">${item.pallet}</td>
                     <td class="p-4">${item.segel}</td>
@@ -558,7 +566,7 @@
                 tr.className = "hover:bg-slate-50 transition";
                 tr.innerHTML = `
                     <td class="p-4 pl-6 font-semibold text-xs text-slate-700">${item.rakName}</td>
-                    <td class="p-4 font-medium whitespace-nowrap">${item.tanggal}</td>
+                    <td class="p-4 font-medium whitespace-nowrap">${formatDisplayDate(item.tanggal)}</td>
                     <td class="p-4"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${item.shift}</span></td>
                     <td class="p-4 text-center ${item.pallet.toLowerCase() === 'ya' ? 'text-red-600 font-semibold' : ''}">${item.pallet}</td>
                     <td class="p-4 text-center ${item.segel.toLowerCase() === 'tidak' ? 'text-red-600 font-semibold' : ''}">${item.segel}</td>
@@ -763,7 +771,7 @@
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-slate-50 transition";
                     tr.innerHTML = `
-                        <td class="p-3 pl-6 font-medium whitespace-nowrap">${tgl}</td>
+                        <td class="p-3 pl-6 font-medium whitespace-nowrap">${formatDisplayDate(tgl)}</td>
                         <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${shift}</span></td>
                         <td class="p-3 text-center ${String(pallet).toLowerCase() === 'ya' ? 'text-red-600 font-semibold' : ''}">${pallet}</td>
                         <td class="p-3 text-center ${String(segel).toLowerCase() === 'tidak' ? 'text-red-600 font-semibold' : ''}">${segel}</td>
@@ -840,7 +848,7 @@
                     tr.className = "hover:bg-slate-50 transition";
                     tr.innerHTML = `
                         <td class="p-3 pl-6 font-semibold text-xs text-slate-700">${item.rakName}</td>
-                        <td class="p-3 font-medium whitespace-nowrap">${item.tanggal}</td>
+                        <td class="p-3 font-medium whitespace-nowrap">${formatDisplayDate(item.tanggal)}</td>
                         <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${item.shift}</span></td>
                         <td class="p-3 pr-6 text-red-600 font-semibold">${item.status}</td>
                     `;
@@ -864,7 +872,7 @@
                     tr.className = "hover:bg-red-50/30 transition";
                     tr.innerHTML = `
                         <td class="p-3 pl-6 font-semibold text-xs text-slate-700">${item.rakName}</td>
-                        <td class="p-3 font-medium whitespace-nowrap">${item.tanggal}</td>
+                        <td class="p-3 font-medium whitespace-nowrap">${formatDisplayDate(item.tanggal)}</td>
                         <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${item.shift}</span></td>
                         <td class="p-3 pr-6 text-red-600 font-semibold">${item.status}</td>
                     `;
@@ -889,7 +897,7 @@
             globalSemuaRiwayatData.forEach(row => {
                 let rowData = [
                     `"${row.rakName}"`,
-                    `"${row.tanggal}"`,
+                    `"${formatDisplayDate(row.tanggal)}"`,
                     `"${row.shift}"`,
                     `"${row.pallet}"`,
                     `"${row.segel}"`,
