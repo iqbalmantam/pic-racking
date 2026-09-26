@@ -82,8 +82,8 @@
         <!-- Panel Filter Rentang Tanggal -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
             <div>
-                <h3 class="font-bold text-slate-800 text-sm">Filter Grafik Berdasarkan Tanggal</h3>
-                <p class="text-xs text-slate-500">Pilih rentang waktu atau gunakan tombol cepat di samping</p>
+                <h3 class="font-bold text-slate-800 text-sm">Filter Data Berdasarkan Tanggal</h3>
+                <p class="text-xs text-slate-500">Pilih rentang waktu untuk grafik dan analisis</p>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
                 <button onclick="setQuickDate('7days')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">7 Hari Terakhir</button>
@@ -100,13 +100,14 @@
             </div>
         </div>
 
-        <!-- Grafik & Panel Summary Rak Belum Dicek -->
+        <!-- Grafik Komparasi Kerusakan & Panel Summary Rak Belum Dicek -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <!-- Grafik Tren Penyok -->
+            <!-- Grafik Komparasi Jenis Masalah / Kerusakan -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h2 class="text-base font-bold text-slate-800 mb-4">Tren Kejadian Temuan Produk Penyok</h2>
+                <h2 class="text-base font-bold text-slate-800 mb-1">Komparasi Jenis Temuan Masalah</h2>
+                <p class="text-xs text-slate-400 mb-4">Akumulasi ketidaksesuaian standar pada rentang tanggal terpilih</p>
                 <div class="relative h-72 w-full">
-                    <canvas id="penyokChart"></canvas>
+                    <canvas id="defectChart"></canvas>
                 </div>
             </div>
 
@@ -122,7 +123,7 @@
                 
                 <!-- Kotak Daftar Rak Kosong -->
                 <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 flex-1 overflow-y-auto max-h-60 bg-slate-50/50 text-sm text-slate-600">
-                    <p class="text-center text-slate-400 italic mt-6">Silakan pilih tanggal di atas untuk melihat status pemeriksaan rak.</p>
+                    <p class="text-center text-slate-400 italic mt-6">Memuat data pemeriksaan seluruh rak...</p>
                 </div>
             </div>
         </div>
@@ -218,7 +219,6 @@
     </div>
 
     <script>
-        // DAFTAR SELURUH RAK & PIC
         const RAK_DATA = [
             { name: "Rak A01 - Arik Koswara", url: "https://docs.google.com/spreadsheets/d/1rpc8jEhFa8tqfF6viYLY9UTbO65o7VfkXLuh0xihdR0/export?format=csv&gid=181124829" },
             { name: "Rak A02 & A03 - Aris Munandar", url: "https://docs.google.com/spreadsheets/d/1KEE-_6jfxEyJiNn9zNlUXoJtQ9E0VF-I8iQpWvCOkKU/export?format=csv&gid=2114378414" },
@@ -255,10 +255,11 @@
             { name: "Rak D09 - Agus Apriyanto", url: "https://docs.google.com/spreadsheets/d/1ixv0Lfbd_tHf-f2quuWCwlea4vWIpPXfO8OBaiOGSHU/export?format=csv&gid=1365455648" }
         ];
 
-        let penyokChartInstance = null;
+        let defectChartInstance = null;
+        let globalRawRows = [];
         let globalPenyokData = [];
         let globalSemuaRiwayatData = [];
-        let allRaksCache = {}; // Cache untuk menyimpan data dari semua rak
+        let allRaksCache = {};
 
         function initDashboard() {
             const select = document.getElementById('rakSelect');
@@ -270,7 +271,6 @@
                 select.appendChild(option);
             });
 
-            // Set tanggal default untuk cek rak kosong ke hari ini (format YYYY-MM-DD)
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('checkDate').value = todayStr;
 
@@ -278,9 +278,7 @@
             preloadAllRaks();
         }
 
-        function changeRak() {
-            loadData();
-        }
+        function changeRak() { loadData(); }
 
         function parseDateString(dateStr) {
             if (!dateStr) return null;
@@ -291,7 +289,6 @@
             return null;
         }
 
-        // Ambil data rak aktif untuk dashboard utama
         function loadData() {
             const select = document.getElementById('rakSelect');
             const selectedIndex = select.value || 0;
@@ -305,13 +302,13 @@
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
-                    const data = results.data;
-                    if (data.length === 0) {
+                    globalRawRows = results.data;
+                    if (globalRawRows.length === 0) {
                         resetDashboardEmpty();
                         return;
                     }
 
-                    const keys = Object.keys(data[0]);
+                    const keys = Object.keys(globalRawRows[0]);
                     const colTanggal = keys[1];
                     const colShift = keys[2];
                     const colPallet = keys[3];
@@ -319,9 +316,9 @@
                     const colPenyok = keys[7];
                     const colLabel = keys[11];
 
-                    document.getElementById('total-inspeksi').innerText = data.length;
+                    document.getElementById('total-inspeksi').innerText = globalRawRows.length;
 
-                    const latest = data[data.length - 1];
+                    const latest = globalRawRows[globalRawRows.length - 1];
                     document.getElementById('last-date').innerText = latest[colTanggal] || '-';
                     document.getElementById('last-shift').innerText = latest[colShift] || '-';
 
@@ -329,7 +326,7 @@
                     globalPenyokData = [];
                     globalSemuaRiwayatData = [];
 
-                    data.forEach(row => {
+                    globalRawRows.forEach(row => {
                         const tgl = row[colTanggal] || '-';
                         const statusPenyok = row[colPenyok];
 
@@ -357,9 +354,10 @@
                     document.getElementById('count-penyok').innerText = totalPenyok;
                     filterDataByDate();
 
+                    // Render Tabel Riwayat Terbaru
                     const tableBody = document.getElementById('table-body');
                     tableBody.innerHTML = '';
-                    const latestFive = [...data].reverse().slice(0, 5);
+                    const latestFive = [...globalRawRows].reverse().slice(0, 5);
 
                     latestFive.forEach(row => {
                         const tr = document.createElement('tr');
@@ -374,6 +372,7 @@
                         tableBody.appendChild(tr);
                     });
 
+                    // Render Tabel Modal Semua Riwayat
                     const modalSemuaRiwayatBody = document.getElementById('modal-semua-riwayat-body');
                     modalSemuaRiwayatBody.innerHTML = '';
                     
@@ -395,7 +394,6 @@
             });
         }
 
-        // Background preload untuk mengecek seluruh rak secara diam-diam guna kebutuhan Summary
         function preloadAllRaks() {
             RAK_DATA.forEach((rak, idx) => {
                 Papa.parse(rak.url, {
@@ -404,13 +402,12 @@
                     skipEmptyLines: true,
                     complete: function(res) {
                         allRaksCache[idx] = res.data;
-                        checkUncheckedRaks(); // Update saat cache masuk
+                        checkUncheckedRaks();
                     }
                 });
             });
         }
 
-        // Logika Utama: Cek Rak mana saja yang belum diperiksa berdasarkan tanggal yang dipilih
         function checkUncheckedRaks() {
             const dateInput = document.getElementById('checkDate').value;
             const container = document.getElementById('unchecked-list');
@@ -421,7 +418,7 @@
 
             RAK_DATA.forEach((rak, idx) => {
                 const rows = allRaksCache[idx];
-                if (!rows) return; // Jika data belum selesai di-download
+                if (!rows) return;
 
                 let hasCheckedOnDate = false;
                 rows.forEach(row => {
@@ -473,24 +470,44 @@
             filterDataByDate();
         }
 
+        // Filter data dan hitung komparasi jenis kerusakan untuk grafik
         function filterDataByDate() {
             const startVal = document.getElementById('startDate').value;
             const endVal = document.getElementById('endDate').value;
             const startDate = startVal ? new Date(startVal) : null;
             const endDate = endVal ? new Date(endVal) : null;
-            const penyokPerTanggal = {};
 
-            globalPenyokData.forEach(item => {
-                if (!item.dateObj) return;
-                let pass = true;
-                if (startDate && item.dateObj < startDate) pass = false;
-                if (endDate && item.dateObj > endDate) pass = false;
-                if (pass) {
-                    if (!penyokPerTanggal[item.tanggal]) penyokPerTanggal[item.tanggal] = 0;
-                    penyokPerTanggal[item.tanggal]++;
-                }
-            });
-            renderPenyokChart(Object.keys(penyokPerTanggal), Object.values(penyokPerTanggal));
+            let countPalletRusak = 0;
+            let countSegelBuruk = 0;
+            let countPenyok = 0;
+            let countLabelBuruk = 0;
+
+            if (globalRawRows.length > 0) {
+                const keys = Object.keys(globalRawRows[0]);
+                const colTanggal = keys[1];
+                const colPallet = keys[3];
+                const colSegel = keys[5];
+                const colPenyok = keys[7];
+                const colLabel = keys[11];
+
+                globalRawRows.forEach(row => {
+                    const dObj = parseDateString(row[colTanggal]);
+                    if (!dObj) return;
+
+                    let pass = true;
+                    if (startDate && dObj < startDate) pass = false;
+                    if (endDate && dObj > endDate) pass = false;
+
+                    if (pass) {
+                        if (row[colPallet] && row[colPallet].toLowerCase().includes('ya')) countPalletRusak++;
+                        if (row[colSegel] && row[colSegel].toLowerCase().includes('tidak')) countSegelBuruk++;
+                        if (row[colPenyok] && row[colPenyok].toLowerCase().includes('ya')) countPenyok++;
+                        if (row[colLabel] && row[colLabel].toLowerCase().includes('tidak')) countLabelBuruk++;
+                    }
+                });
+            }
+
+            renderDefectChart(countPalletRusak, countSegelBuruk, countPenyok, countLabelBuruk);
         }
 
         function resetDateFilter() {
@@ -519,24 +536,40 @@
         function openSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.remove('hidden'); }
         function closeSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.add('hidden'); }
 
-        function renderPenyokChart(labels, values) {
-            const ctx = document.getElementById('penyokChart').getContext('2d');
-            if (penyokChartInstance) penyokChartInstance.destroy();
-            penyokChartInstance = new Chart(ctx, {
+        // Render Grafik Komparasi Jenis Kerusakan (Bar Chart multi-warna)
+        function renderDefectChart(pallet, segel, penyok, label) {
+            const ctx = document.getElementById('defectChart').getContext('2d');
+            if (defectChartInstance) defectChartInstance.destroy();
+
+            defectChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: labels,
-                    datasets: [{ label: 'Jumlah Temuan', data: values, backgroundColor: '#f59e0b', borderRadius: 6, barThickness: 'flex', maxBarThickness: 40 }]
+                    labels: ['Pallet Rusak', 'Segel Tidak Baik', 'Produk Penyok', 'Label Tidak Baik'],
+                    datasets: [{
+                        label: 'Jumlah Temuan',
+                        data: [pallet, segel, penyok, label],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'],
+                        borderRadius: 8,
+                        barThickness: 35
+                    }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } },
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: '#f1f5f9' }, 
+                            ticks: { stepSize: 1 } 
+                        }, 
+                        x: { 
+                            grid: { display: false } 
+                        } 
+                    },
                     plugins: { legend: { display: false } }
                 }
             });
         }
 
-        // Jalankan inisialisasi awal
         initDashboard();
     </script>
 </body>
