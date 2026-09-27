@@ -56,7 +56,7 @@
                 <div class="w-full md:w-auto flex flex-col gap-1">
                     <label for="rakSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rak & PIC:</label>
                     <select id="rakSelect" onchange="loadData()" class="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-blue-500 shadow-sm">
-                        <!-- Opsi diisi otomatis -->
+                        <!-- Opsi diisi otomatis secara dinamis -->
                     </select>
                 </div>
             </div>
@@ -330,48 +330,12 @@
     <script>
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxbO6R40dq3NbNo6jE5FRV3wQbysvvk74suPLmu2EhojEjWIIZkqh4j_N57v9HGTeteTQ/exec";
 
-        const ALL_RAK_NAMES = [
-            "Rak A01 - Arik Koswara",
-            "Rak A02 & A03 - Aris Munandar",
-            "Rak A04 & A05 - Pangabean H",
-            "Rak A06 & A07 - Heki Apriansah",
-            "Rak A08 & A09 - Ignasius Sinaga",
-            "Rak A10 & A11 - Sabar Sihotang",
-            "Rak A12 & A13 - Nizar Alam",
-            "Rak A14 - Saiful Anwar",
-            "Rak B01 & B02 - Rizky Ardiansyah",
-            "Rak B03 & B04 - Irfan Yogie",
-            "Rak B05 & B06 - Zaidan Akbar",
-            "Rak B07 & B08 - Fiqry Guram",
-            "Rak B09 & B10 - Amin",
-            "Rak B11 & B12 - Umar Setiawan",
-            "Rak B13 & B14 - Agus Wahyudi",
-            "Rak C01 - Mardi Wahyudi",
-            "Rak C02 - Kemmy Budiman",
-            "Rak C03 - Akhmad Junaedi",
-            "Rak C04 - Ade Hidayatullah",
-            "Rak C05 - Ajay Permana",
-            "Rak C06 - Mohammad Tohani",
-            "Rak C07 - Dwi Nanto",
-            "Rak C08 - Wawan Irawan",
-            "Rak C09 - Agung Masita",
-            "Rak C10 - Agung Masita",
-            "Rak D01 - Adil Mardianto",
-            "Rak D02 - M Arifin",
-            "Rak D03 - Rudiyanto",
-            "Rak D04 - Mulyana",
-            "Rak D05 - Bera Parsimin",
-            "Rak D07 - Sahroni",
-            "Rak D08 - Agus Apriyanto",
-            "Rak D09 - Agus Apriyanto"
-        ];
-
+        let ALL_RAK_NAMES = []; // Diisi otomatis secara dinamis dari data Master
         let defectChartInstance = null;
         let globalMasterRows = [];
         let globalAllDefectsList = [];
         let globalSemuaRiwayatData = [];
 
-        // FUNGSI BANTU UNTUK MEMBERSIHKAN FORMAT TANGGAL
         function formatDisplayDate(dateStr) {
             if (!dateStr) return '-';
             let s = String(dateStr).trim();
@@ -385,19 +349,8 @@
         }
 
         function initDashboard() {
-            const select = document.getElementById('rakSelect');
-            select.innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>';
-            ALL_RAK_NAMES.forEach(name => {
-                const option = document.createElement('option');
-                option.value = name;
-                option.text = name;
-                select.appendChild(option);
-            });
-
-            select.value = "ALL";
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('checkDate').value = todayStr;
-
             fetchMasterData();
         }
 
@@ -448,6 +401,33 @@
                 .then(data => {
                     if (data && data.length > 1) {
                         globalMasterRows = data.slice(1);
+                        
+                        // AMBIL DAFTAR RAK / PIC SECARA OTOMATIS DARI KOLOM PERTAMA MASTER DATA
+                        const rakSet = [];
+                        globalMasterRows.forEach(row => {
+                            const rakName = row[0];
+                            if (rakName && !rakSet.includes(rakName)) {
+                                rakSet.push(rakName);
+                            }
+                        });
+                        ALL_RAK_NAMES = rakSet;
+
+                        // UPDATE DROPDOWN PILIH RAK OTOMATIS
+                        const select = document.getElementById('rakSelect');
+                        const currentSelected = select.value;
+                        select.innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>';
+                        ALL_RAK_NAMES.forEach(name => {
+                            const option = document.createElement('option');
+                            option.value = name;
+                            option.text = name;
+                            select.appendChild(option);
+                        });
+                        if (currentSelected && [...select.options].some(o => o.value === currentSelected)) {
+                            select.value = currentSelected;
+                        } else {
+                            select.value = "ALL";
+                        }
+
                         loadData();
                         checkUncheckedRaks();
                     } else {
@@ -471,9 +451,35 @@
                 .then(data => {
                     if (data && data.length > 1) {
                         globalMasterRows = data.slice(1);
+
+                        // PERBARUI DAFTAR RAK OTOMATIS SAAT SYNC
+                        const rakSet = [];
+                        globalMasterRows.forEach(row => {
+                            const rakName = row[0];
+                            if (rakName && !rakSet.includes(rakName)) {
+                                rakSet.push(rakName);
+                            }
+                        });
+                        ALL_RAK_NAMES = rakSet;
+
+                        const select = document.getElementById('rakSelect');
+                        const currentSelected = select.value;
+                        select.innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>';
+                        ALL_RAK_NAMES.forEach(name => {
+                            const option = document.createElement('option');
+                            option.value = name;
+                            option.text = name;
+                            select.appendChild(option);
+                        });
+                        if (currentSelected && [...select.options].some(o => o.value === currentSelected)) {
+                            select.value = currentSelected;
+                        } else {
+                            select.value = "ALL";
+                        }
+
                         loadData();
                         checkUncheckedRaks();
-                        alert("Berhasil! Data telah disinkronkan dari seluruh Sheet PIC.");
+                        alert("Berhasil! Data & daftar PIC telah disinkronkan otomatis.");
                     } else {
                         alert("Sinkronisasi selesai, namun data kosong.");
                     }
