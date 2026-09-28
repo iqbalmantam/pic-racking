@@ -119,34 +119,30 @@
             </div>
         </div>
 
-        <!-- Grafik Komparasi Kerusakan & Panel Summary Rak Belum Dicek -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <!-- Grafik Komparasi Jenis Masalah / Kerusakan -->
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <div class="flex justify-between items-start mb-1">
-                    <h2 class="text-base font-bold text-slate-800">Komparasi Jenis Temuan Masalah</h2>
-                    <span class="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded animate-pulse">Klik Batang Grafik untuk Detail</span>
-                </div>
-                <p class="text-xs text-slate-400 mb-4">Akumulasi ketidaksesuaian standar pada rentang tanggal terpilih</p>
-                <div class="relative h-72 w-full">
-                    <canvas id="defectChart"></canvas>
-                </div>
+        <!-- Grafik Komparasi Kerusakan -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
+            <div class="flex justify-between items-start mb-1">
+                <h2 class="text-base font-bold text-slate-800">Komparasi Jenis Temuan Masalah</h2>
+                <span class="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded animate-pulse">Klik Batang Grafik untuk Detail</span>
             </div>
+            <p class="text-xs text-slate-400 mb-4">Akumulasi ketidaksesuaian standar pada rentang tanggal terpilih</p>
+            <div class="relative h-72 w-full">
+                <canvas id="defectChart"></canvas>
+            </div>
+        </div>
 
-            <!-- Panel Summary: Rak Belum Dicek Berdasarkan Tanggal -->
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
-                <div class="flex justify-between items-center mb-3">
-                    <div>
-                        <h2 class="text-base font-bold text-slate-800">Summary: Rak Belum Dicek</h2>
-                        <p class="text-xs text-slate-500">Daftar rak yang belum ada laporan pada tanggal tertentu</p>
-                    </div>
-                    <input type="date" id="checkDate" onchange="checkUncheckedRaks()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500 font-semibold">
+        <!-- Panel Summary: Rak Belum Dicek Berdasarkan Tanggal (Dipindah ke bawah agar Full) -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 flex flex-col">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                <div>
+                    <h2 class="text-base font-bold text-slate-800">Summary: Rak Belum Dicek</h2>
+                    <p class="text-xs text-slate-500">Daftar rak yang belum ada laporan pada tanggal tertentu</p>
                 </div>
-                
-                <!-- Full ke bawah tanpa batasan tinggi/scroll -->
-                <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 text-sm text-slate-600 h-full flex flex-col justify-start">
-                    <p class="text-center text-slate-400 italic mt-6">Memuat status pemeriksaan...</p>
-                </div>
+                <input type="date" id="checkDate" onchange="checkUncheckedRaks()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500 font-semibold">
+            </div>
+            
+            <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 text-sm text-slate-600 w-full">
+                <p class="text-center text-slate-400 italic py-4">Memuat status pemeriksaan...</p>
             </div>
         </div>
 
