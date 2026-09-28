@@ -426,7 +426,6 @@
                             select.value = "ALL";
                         }
 
-                        // Jalankan pengecekan rak belum dicek SEGERA setelah data siap
                         checkUncheckedRaks();
                         setQuickDate('thisMonth');
                     } else {
@@ -534,8 +533,16 @@
                 return;
             }
 
+            // PERBAIKAN: Urutkan data berdasarkan tanggal secara kronologis (dari terlama ke terbaru)
+            globalSemuaRiwayatData.sort((a, b) => {
+                if (!a.dateObj) return 1;
+                if (!b.dateObj) return -1;
+                return a.dateObj - b.dateObj;
+            });
+
             document.getElementById('total-inspeksi').innerText = globalSemuaRiwayatData.length;
 
+            // Mengambil item terakhir setelah diurutkan (tanggal paling baru)
             const latest = globalSemuaRiwayatData[globalSemuaRiwayatData.length - 1];
             if (latest) {
                 document.getElementById('last-date').innerText = formatDisplayDate(latest.tanggal);
@@ -581,7 +588,6 @@
             });
         }
 
-        // OPTIMASI: Dipercepat dengan menggunakan Set dan cache tanggal agar instan
         function checkUncheckedRaks() {
             const dateInput = document.getElementById('checkDate').value;
             const container = document.getElementById('unchecked-list');
@@ -589,7 +595,6 @@
 
             const targetDateStr = dateInput; 
             
-            // Kumpulkan semua nama rak yang sudah dicek pada tanggal tersebut ke dalam Set agar pencarian O(1) cepat
             const checkedRaksOnDate = new Set();
             globalMasterRows.forEach(row => {
                 if (row[2]) {
