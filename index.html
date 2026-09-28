@@ -4,959 +4,594 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Monitoring & Audit Racking Gudang</title>
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS (play CDN: cukup untuk pemakaian internal) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+    <!-- Chart.js (versi dipin) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
-        .modal-body-scroll {
-            max-height: 60vh;
-            overflow-y: auto;
-        }
+        .modal-body-scroll { max-height: 60vh; overflow-y: auto; }
+        .print-only { display: none; }
         @media print {
             body { background: white !important; }
-            header, button, input, .no-print { display: none !important; }
+            .no-print, #modal { display: none !important; }
+            .print-only { display: block !important; }
             .max-w-7xl { max-width: 100% !important; padding: 0 !important; }
-            div { box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
+            div { box-shadow: none !important; }
         }
     </style>
 </head>
 <body class="bg-slate-50 font-sans antialiased text-slate-800">
 
-    <div class="max-w-7xl mx-auto px-4 py-8">
-        <!-- Header Utama & Tombol Sinkronisasi -->
-        <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
+<div class="max-w-7xl mx-auto px-4 py-8">
+
+    <!-- Banner pesan (loading / sukses / error) -->
+    <div id="msg" class="no-print hidden mb-4 px-4 py-3 rounded-xl text-sm font-medium" role="status"></div>
+
+    <!-- Header -->
+    <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="bg-blue-50 text-blue-600 border border-blue-100 text-xs font-semibold px-2.5 py-0.5 rounded-full">Monitoring Operasional Gudang</span>
+                <span id="sync-badge" class="bg-slate-100 text-slate-500 text-xs font-medium px-2 py-0.5 rounded-full">⏳ Memuat…</span>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-900 mt-1">Dashboard Monitoring Racking</h1>
+            <p class="text-sm text-slate-500">Status Tampilan: <span id="pic-name" class="font-semibold text-blue-600">🌐 Summary Keseluruhan Gudang</span></p>
+            <p id="print-range" class="print-only text-xs text-slate-600 mt-1"></p>
+        </div>
+
+        <div class="flex flex-col md:flex-row items-start md:items-center gap-3 w-full md:w-auto">
+            <div class="flex items-center gap-2 no-print flex-wrap">
+                <button onclick="syncData()" id="sync-btn" title="Tarik data terbaru dari seluruh sheet PIC" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🔄 Sinkronkan Data</button>
+                <button onclick="exportToCSV()" title="Unduh data sesuai filter aktif (CSV, bisa dibuka di Excel)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">📥 Unduh CSV</button>
+                <button onclick="window.print()" title="Cetak / Simpan PDF" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🖨️ Cetak PDF</button>
+            </div>
+            <div class="w-full md:w-auto flex flex-col gap-1 no-print">
+                <label for="rakSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rak & PIC:</label>
+                <select id="rakSelect" onchange="refresh()" class="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-blue-500 shadow-sm"></select>
+            </div>
+        </div>
+    </header>
+
+    <!-- KPI -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Inspeksi</p>
+            <div class="flex items-baseline justify-between mt-2">
+                <h3 id="total-inspeksi" class="text-3xl font-extrabold text-slate-900">0</h3>
+                <span id="label-info-kpi" class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">Semua Rak</span>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Inspeksi Terakhir Masuk</p>
+            <div class="flex items-baseline justify-between mt-2">
+                <h3 id="last-date" class="text-lg font-bold text-blue-600">-</h3>
+                <span id="last-shift" class="text-xs font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded">-</span>
+            </div>
+        </div>
+        <div onclick="openSemuaTemuanModal()" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-red-300 hover:shadow-md transition group flex flex-col justify-between">
+            <div class="flex justify-between items-center">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-red-600 transition">Inspeksi Bermasalah</p>
+                <span class="text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded font-bold no-print">Klik Detail</span>
+            </div>
+            <div class="flex items-baseline justify-between mt-2">
+                <h3 id="count-all-defects" class="text-3xl font-extrabold text-red-600">0</h3>
+                <span id="label-bulan-berjalan" class="text-xs text-red-600/80 font-medium">Periode</span>
+            </div>
+            <p id="count-temuan-total" class="text-[11px] text-slate-400 mt-1">0 temuan pada grafik</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Sinkronisasi</p>
+            <div class="flex items-baseline justify-between mt-2">
+                <h3 id="sync-time" class="text-sm font-bold text-slate-500">Belum sinkron</h3>
+                <span id="rak-count" class="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded">0 rak</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter tanggal -->
+    <div class="no-print bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
+        <div>
+            <h3 class="font-bold text-slate-800 text-sm">Filter Data Berdasarkan Tanggal</h3>
+            <p class="text-xs text-slate-500">Pilih rentang waktu untuk grafik dan analisis</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <button onclick="setQuickDate('7days')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">7 Hari Terakhir</button>
+            <button onclick="setQuickDate('thisMonth')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Bulan Ini</button>
+            <button onclick="resetDateFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Semua Data</button>
+            <div class="h-6 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
+            <div class="flex items-center gap-1.5">
+                <input type="date" id="startDate" onchange="refresh()" aria-label="Tanggal mulai" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
+                <span class="text-xs text-slate-400">s/d</span>
+                <input type="date" id="endDate" onchange="refresh()" aria-label="Tanggal akhir" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
+            </div>
+        </div>
+    </div>
+
+    <!-- Grafik -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
+        <div class="flex justify-between items-start mb-1">
+            <h2 class="text-base font-bold text-slate-800">Komparasi Jenis Temuan Masalah</h2>
+            <span class="no-print text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded">Klik Batang Grafik untuk Detail</span>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Akumulasi ketidaksesuaian standar pada rak & rentang tanggal terpilih</p>
+        <div class="relative h-72 w-full"><canvas id="defectChart"></canvas></div>
+    </div>
+
+    <!-- Rak belum dicek -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 flex flex-col">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
             <div>
-                <div class="flex items-center gap-2">
-                    <span class="bg-blue-50 text-blue-600 border border-blue-100 text-xs font-semibold px-2.5 py-0.5 rounded-full">Monitoring Operasional Gudang</span>
-                    <span class="bg-emerald-50 text-emerald-600 text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> GAS Master Sync
-                    </span>
-                </div>
-                <h1 class="text-2xl font-bold text-slate-900 mt-1">Dashboard Monitoring Racking</h1>
-                <p class="text-sm text-slate-500">Status Tampilan: <span id="pic-name" class="font-semibold text-blue-600">🌐 Summary Keseluruhan Gudang</span></p>
+                <h2 class="text-base font-bold text-slate-800">Summary: Rak Belum Dicek</h2>
+                <p class="text-xs text-slate-500">Daftar rak yang belum ada laporan pada tanggal tertentu</p>
             </div>
-            
-            <div class="flex flex-col md:flex-row items-start md:items-center gap-3 w-full md:w-auto">
-                <!-- TOMBOL SINKRONISASI, EKSPOR & CETAK -->
-                <div class="flex items-center gap-2 no-print flex-wrap">
-                    <button onclick="syncData()" id="sync-btn" title="Tarik data terbaru dari seluruh sheet PIC" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5">
-                        🔄 Sinkronkan Data
-                    </button>
-                    <button onclick="exportToCSV()" title="Unduh Data CSV/Excel" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5">
-                        📥 Unduh Excel
-                    </button>
-                    <button onclick="window.print()" title="Cetak / Simpan PDF" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5">
-                        🖨️ Cetak PDF
-                    </button>
-                </div>
-
-                <!-- DROPDOWN PILIH RAK / PIC -->
-                <div class="w-full md:w-auto flex flex-col gap-1">
-                    <label for="rakSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rak & PIC:</label>
-                    <select id="rakSelect" onchange="loadData()" class="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-blue-500 shadow-sm">
-                        <!-- Opsi diisi otomatis secara dinamis -->
-                    </select>
-                </div>
-            </div>
-        </header>
-
-        <!-- Kartu Ringkasan (KPI Cards) -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Inspeksi</p>
-                <div class="flex items-baseline justify-between mt-2">
-                    <h3 id="total-inspeksi" class="text-3xl font-extrabold text-slate-900">0</h3>
-                    <span id="label-info-kpi" class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">Semua Rak</span>
-                </div>
-            </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Inspeksi Terakhir Masuk</p>
-                <div class="flex items-baseline justify-between mt-2">
-                    <h3 id="last-date" class="text-lg font-bold text-blue-600">-</h3>
-                    <span id="last-shift" class="text-xs font-medium text-slate-500 bg-blue-50 text-blue-700 px-2 py-0.5 rounded">-</span>
-                </div>
-            </div>
-            <!-- Kartu Temuan Bulan Berjalan -->
-            <div onclick="openSemuaTemuanModal()" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-red-300 hover:shadow-md transition group flex flex-col justify-between">
-                <div class="flex justify-between items-center">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-red-600 transition">Temuan Bulan Berjalan</p>
-                    <span class="text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded font-bold">Klik Detail</span>
-                </div>
-                <div class="flex items-baseline justify-between mt-2">
-                    <h3 id="count-all-defects" class="text-3xl font-extrabold text-red-600">0</h3>
-                    <span id="label-bulan-berjalan" class="text-xs text-red-600/80 font-medium">Bulan Ini</span>
-                </div>
-            </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Audit Harian</p>
-                <div class="flex items-baseline justify-between mt-2">
-                    <h3 class="text-sm font-bold text-emerald-600">Sistem Aktif</h3>
-                    <span class="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded">Realtime GAS</span>
-                </div>
-            </div>
+            <input type="date" id="checkDate" onchange="checkUncheckedRaks()" aria-label="Tanggal pengecekan" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500 font-semibold">
         </div>
+        <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 text-sm text-slate-600 w-full">
+            <p class="text-center text-slate-400 italic py-4">Memuat status pemeriksaan...</p>
+        </div>
+    </div>
 
-        <!-- Panel Filter Rentang Tanggal -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
+    <!-- Leaderboard -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
+        <div class="p-6 border-b border-slate-100">
+            <h2 class="text-base font-bold text-slate-800">🏆 Leaderboard Kepatuhan PIC (Audit Compliance)</h2>
+            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporannya. Keaktifan = jumlah laporan ÷ (jumlah hari × jumlah shift) pada rentang terpilih.</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                        <th class="p-4 pl-6 font-semibold w-24 text-center">Rank</th>
+                        <th class="p-4 font-semibold">Rak / PIC</th>
+                        <th class="p-4 font-semibold text-center">Total Laporan Dikirim</th>
+                        <th class="p-4 font-semibold pr-6 text-center">Status Keaktifan</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Riwayat terbaru -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
             <div>
-                <h3 class="font-bold text-slate-800 text-sm">Filter Data Berdasarkan Tanggal</h3>
-                <p class="text-xs text-slate-500">Pilih rentang waktu untuk grafik dan analisis</p>
+                <h2 class="text-base font-bold text-slate-800">Riwayat Inspeksi Terbaru</h2>
+                <p class="text-xs text-slate-500">Menampilkan 5 laporan pemeriksaan terbaru</p>
             </div>
-            <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="setQuickDate('7days')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">7 Hari Terakhir</button>
-                <button onclick="setQuickDate('thisMonth')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Bulan Ini</button>
-                <button onclick="resetDateFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Semua Data</button>
-                
-                <div class="h-6 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
-
-                <div class="flex items-center gap-1.5">
-                    <input type="date" id="startDate" onchange="filterDataByDate()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
-                    <span class="text-xs text-slate-400">s/d</span>
-                    <input type="date" id="endDate" onchange="filterDataByDate()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
-                </div>
-            </div>
+            <button onclick="openSemuaRiwayatModal()" class="no-print bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg shadow-sm transition font-medium">Tampilkan Semua Data</button>
         </div>
-
-        <!-- Grafik Komparasi Kerusakan -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
-            <div class="flex justify-between items-start mb-1">
-                <h2 class="text-base font-bold text-slate-800">Komparasi Jenis Temuan Masalah</h2>
-                <span class="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded animate-pulse">Klik Batang Grafik untuk Detail</span>
-            </div>
-            <p class="text-xs text-slate-400 mb-4">Akumulasi ketidaksesuaian standar pada rentang tanggal terpilih</p>
-            <div class="relative h-72 w-full">
-                <canvas id="defectChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Panel Summary: Rak Belum Dicek Berdasarkan Tanggal (Dipindah ke bawah agar Full) -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 flex flex-col">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-                <div>
-                    <h2 class="text-base font-bold text-slate-800">Summary: Rak Belum Dicek</h2>
-                    <p class="text-xs text-slate-500">Daftar rak yang belum ada laporan pada tanggal tertentu</p>
-                </div>
-                <input type="date" id="checkDate" onchange="checkUncheckedRaks()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500 font-semibold">
-            </div>
-            
-            <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 text-sm text-slate-600 w-full">
-                <p class="text-center text-slate-400 italic py-4">Memuat status pemeriksaan...</p>
-            </div>
-        </div>
-
-        <!-- LEADERBOARD KEPATUHAN PIC -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                <div>
-                    <h2 class="text-base font-bold text-slate-800">🏆 Leaderboard Kepatuhan PIC (Audit Compliance)</h2>
-                    <p class="text-xs text-slate-500">Klik pada baris PIC di bawah untuk melihat detail riwayat laporannya</p>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                            <th class="p-4 pl-6 font-semibold w-16 text-center">Rank</th>
-                            <th class="p-4 font-semibold">Rak / PIC</th>
-                            <th class="p-4 font-semibold text-center">Total Laporan Dikirim</th>
-                            <th class="p-4 font-semibold pr-6 text-center">Status Keaktifan</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboard-body" class="divide-y divide-slate-100 text-sm text-slate-700">
-                        <!-- Diisi via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Tabel Log Inspeksi Terbaru -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                <div>
-                    <h2 class="text-base font-bold text-slate-800">Riwayat Inspeksi Terbaru</h2>
-                    <p class="text-xs text-slate-500">Menampilkan data laporan pemeriksaan terbaru</p>
-                </div>
-                <button onclick="openSemuaRiwayatModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg shadow-sm transition font-medium">
-                    Tampilkan Semua Data
-                </button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                            <th class="p-4 font-semibold">Rak / PIC</th>
-                            <th class="p-4 font-semibold">Tanggal</th>
-                            <th class="p-4 font-semibold">Shift</th>
-                            <th class="p-4 font-semibold">Pallet Rusak</th>
-                            <th class="p-4 font-semibold">Segel Baik</th>
-                            <th class="p-4 font-semibold">Produk Penyok</th>
-                            <th class="p-4 font-semibold">Label Baik</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body" class="divide-y divide-slate-100 text-sm text-slate-700">
-                        <!-- Data dimasukkan lewat JS -->
-                    </tbody>
-                </table>
-            </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                        <th class="p-3 font-semibold">Rak / PIC</th>
+                        <th class="p-3 font-semibold">Tanggal</th>
+                        <th class="p-3 font-semibold">Shift</th>
+                        <th class="p-3 font-semibold text-center">Pallet Rusak</th>
+                        <th class="p-3 font-semibold text-center">Segel Baik</th>
+                        <th class="p-3 font-semibold text-center">Produk Penyok</th>
+                        <th class="p-3 font-semibold text-center">Label Baik</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+            </table>
         </div>
     </div>
+</div>
 
-    <!-- MODAL POPUP DETAIL PIC LEADERBOARD -->
-    <div id="picDetailModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <div>
-                    <h3 id="pic-modal-title" class="text-base font-bold text-slate-900">Detail Laporan PIC</h3>
-                    <p class="text-xs text-slate-500">Daftar seluruh riwayat inspeksi untuk PIC/Rak ini pada rentang tanggal terpilih</p>
-                </div>
-                <button onclick="closePicDetailModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
+<!-- MODAL UMUM (dipakai semua popup) -->
+<div id="modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div id="modal-box" class="bg-white rounded-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <div>
+                <h3 id="modal-title" class="text-base font-bold text-slate-900"></h3>
+                <p id="modal-sub" class="text-xs text-slate-500"></p>
             </div>
-            <div class="p-0 overflow-y-auto flex-1 modal-body-scroll">
-                <table class="w-full text-left border-collapse">
-                    <thead class="sticky top-0 bg-white shadow-sm">
-                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                            <th class="p-3 pl-6 font-semibold">Tanggal</th>
-                            <th class="p-3 font-semibold">Shift</th>
-                            <th class="p-3 font-semibold text-center">Pallet Rusak</th>
-                            <th class="p-3 font-semibold text-center">Segel Baik</th>
-                            <th class="p-3 font-semibold text-center">Produk Penyok</th>
-                            <th class="p-3 pr-6 font-semibold text-center">Label Baik</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modal-pic-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
-                </table>
-            </div>
-            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                <button onclick="closePicDetailModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
-            </div>
+            <button onclick="closeModal()" aria-label="Tutup" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
+        </div>
+        <div class="overflow-y-auto flex-1 modal-body-scroll">
+            <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 bg-white shadow-sm"><tr id="modal-head" class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider"></tr></thead>
+                <tbody id="modal-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+            </table>
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+            <button id="modal-close" onclick="closeModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
         </div>
     </div>
+</div>
 
-    <!-- MODAL POPUP DETAIL KATEGORI KERUSAKAN (GRAFIK) -->
-    <div id="defectModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <div>
-                    <h3 id="defect-modal-title" class="text-base font-bold text-slate-900">Detail Riwayat Temuan</h3>
-                    <p class="text-xs text-slate-500">Daftar inspeksi berdasarkan kategori kerusakan yang dipilih</p>
-                </div>
-                <button onclick="closeDefectModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
-            </div>
-            <div class="p-0 overflow-y-auto flex-1 modal-body-scroll">
-                <table class="w-full text-left border-collapse">
-                    <thead class="sticky top-0 bg-white shadow-sm">
-                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                            <th class="p-3 pl-6 font-semibold">Rak / PIC</th>
-                            <th class="p-3 font-semibold">Tanggal</th>
-                            <th class="p-3 font-semibold">Shift</th>
-                            <th class="p-3 pr-6 font-semibold">Status Keterangan</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modal-defect-table-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
-                </table>
-            </div>
-            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                <button onclick="closeDefectModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
-            </div>
-        </div>
-    </div>
+<script>
+    // ================= KONFIGURASI =================
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxbO6R40dq3NbNo6jE5FRV3wQbysvvk74suPLmu2EhojEjWIIZkqh4j_N57v9HGTeteTQ/exec";
+    // Opsional: isi token sederhana; GAS harus memeriksa e.parameter.token agar berfungsi.
+    const GAS_TOKEN = "";
+    const TZ = "Asia/Jakarta";
 
-    <!-- MODAL POPUP SELURUH TEMUAN MASALAH -->
-    <div id="semuaTemuanModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <div>
-                    <h3 class="text-base font-bold text-slate-900">Detail Temuan Bulan Berjalan</h3>
-                    <p class="text-xs text-slate-500">Daftar seluruh inspeksi yang memiliki ketidaksesuaian/kerusakan pada bulan ini</p>
-                </div>
-                <button onclick="closeSemuaTemuanModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
-            </div>
-            <div class="p-0 overflow-y-auto flex-1 modal-body-scroll">
-                <table class="w-full text-left border-collapse">
-                    <thead class="sticky top-0 bg-white shadow-sm">
-                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                            <th class="p-3 pl-6 font-semibold">Rak / PIC</th>
-                            <th class="p-3 font-semibold">Tanggal</th>
-                            <th class="p-3 font-semibold">Shift</th>
-                            <th class="p-3 pr-6 font-semibold">Jenis Temuan Masalah</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modal-semua-temuan-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
-                </table>
-            </div>
-            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                <button onclick="closeSemuaTemuanModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
-            </div>
-        </div>
-    </div>
+    // ================= HELPER =================
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const norm = v => String(v ?? '').trim().toLowerCase();
+    const disp = v => (v === '' || v == null) ? '-' : v;
+    const ymdFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ });
+    const toYMD = d => ymdFmt.format(d);
+    const addDays = (ymd, n) => { const d = new Date(ymd + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+    const hhmm = d => d.toLocaleTimeString('id-ID', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
 
-    <!-- MODAL POPUP SEMUA RIWAYAT -->
-    <div id="semuaRiwayatModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <div>
-                    <h3 class="text-base font-bold text-slate-900">Semua Riwayat Inspeksi</h3>
-                    <p class="text-xs text-slate-500">Menampilkan seluruh data laporan pemeriksaan</p>
-                </div>
-                <button onclick="closeSemuaRiwayatModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
-            </div>
-            <div class="p-0 overflow-y-auto flex-1 modal-body-scroll" style="max-height: 70vh;">
-                <table class="w-full text-left border-collapse">
-                    <thead class="sticky top-0 bg-white shadow-sm">
-                        <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                            <th class="p-4 pl-6 font-semibold">Rak / PIC</th>
-                            <th class="p-4 font-semibold">Tanggal</th>
-                            <th class="p-4 font-semibold">Shift</th>
-                            <th class="p-4 font-semibold text-center">Pallet Rusak</th>
-                            <th class="p-4 font-semibold text-center">Segel Baik</th>
-                            <th class="p-4 font-semibold text-center">Produk Penyok</th>
-                            <th class="p-4 font-semibold text-center">Label Baik</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modal-semua-riwayat-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
-                </table>
-            </div>
-            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                <button onclick="closeSemuaRiwayatModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
-            </div>
-        </div>
-    </div>
+    // Normalisasi ke 'YYYY-MM-DD' (zona WIB untuk timestamp UTC)
+    function normalizeDate(raw) {
+        if (raw == null || raw === '') return null;
+        if (raw instanceof Date) return isNaN(raw) ? null : toYMD(raw);
+        const s = String(raw).trim();
+        if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+            return /(Z|[+-]\d{2}:?\d{2})$/.test(s) ? toYMD(new Date(s)) : s.slice(0, 10);
+        }
+        const m = s.split(' ')[0].split(/[\/-]/);
+        if (m.length === 3 && m.every(x => /^\d+$/.test(x))) {
+            let [a, b, c] = m;
+            if (a.length === 4) return `${a}-${b.padStart(2, '0')}-${c.padStart(2, '0')}`;
+            const year = c.length === 2 ? '20' + c : c;
+            let day = a, month = b;
+            if (parseInt(b, 10) > 12) { month = a; day = b; }   // format mm/dd/yyyy
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        const d = new Date(s);
+        return isNaN(d) ? null : toYMD(d);
+    }
 
-    <script>
-        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxbO6R40dq3NbNo6jE5FRV3wQbysvvk74suPLmu2EhojEjWIIZkqh4j_N57v9HGTeteTQ/exec";
+    // Definisi 4 jenis temuan
+    const YES = ['ya', 'true', 'yes', 'y'], NO = ['tidak', 'false', 'no', 'n'];
+    const DEFECTS = [
+        { label: 'Pallet Rusak',     test: r => YES.includes(norm(r.pallet)) },
+        { label: 'Segel Tidak Baik', test: r => NO.includes(norm(r.segel)) },
+        { label: 'Produk Penyok',    test: r => YES.includes(norm(r.penyok)) },
+        { label: 'Label Tidak Baik', test: r => NO.includes(norm(r.label)) }
+    ];
+    const issuesOf = r => DEFECTS.filter(d => d.test(r)).map(d => d.label);
 
-        let ALL_RAK_NAMES = []; 
-        let defectChartInstance = null;
-        let globalMasterRows = [];
-        let globalAllDefectsList = [];
-        let globalSemuaRiwayatData = [];
+    // ================= STATE =================
+    let rows = [];          // {rak, ymd, tanggal, shift, pallet, segel, penyok, label}
+    let rakNames = [];
+    let chart = null;
+    let state = { ranged: [], defects: [], scoped: [] };
 
-        function formatDisplayDate(dateStr) {
-            if (!dateStr) return '-';
-            let s = String(dateStr).trim();
-            if (s.includes('T')) {
-                return s.split('T')[0];
+    // ================= PESAN =================
+    let msgTimer;
+    function showMsg(text, type = 'info', auto = true) {
+        const el = $('msg');
+        const cls = { info: 'bg-blue-50 text-blue-700', ok: 'bg-emerald-50 text-emerald-700', err: 'bg-red-50 text-red-700' }[type];
+        el.className = `no-print mb-4 px-4 py-3 rounded-xl text-sm font-medium ${cls}`;
+        el.textContent = text;
+        clearTimeout(msgTimer);
+        if (auto) msgTimer = setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+    const hideMsg = () => $('msg').classList.add('hidden');
+
+    function setBadge(text, cls) {
+        const b = $('sync-badge');
+        b.textContent = text;
+        b.className = `text-xs font-medium px-2 py-0.5 rounded-full ${cls}`;
+    }
+
+    // ================= AMBIL DATA =================
+    async function fetchData(sync) {
+        const p = new URLSearchParams();
+        if (sync) p.set('action', 'sync');
+        if (GAS_TOKEN) p.set('token', GAS_TOKEN);
+        const qs = p.toString();
+        const res = await fetch(GAS_WEB_APP_URL + (qs ? '?' + qs : ''));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    }
+
+    // Menerima array [header, ...baris] atau objek {data:[...], raks:[...]} (daftar master rak opsional dari GAS)
+    function processMasterData(data) {
+        const raw = Array.isArray(data) ? data : (data && data.data);
+        if (!Array.isArray(raw)) throw new Error('Format data tidak dikenali');
+        const masterRaks = (!Array.isArray(data) && Array.isArray(data.raks)) ? data.raks : [];
+
+        rows = raw.slice(1).filter(r => Array.isArray(r) && r[0]).map(r => ({
+            rak: String(r[0]), ymd: normalizeDate(r[2]), tanggal: r[2],
+            shift: r[3], pallet: r[4], segel: r[5], penyok: r[6], label: r[7]
+        }));
+
+        const set = new Set(masterRaks.map(String));
+        rows.forEach(r => set.add(r.rak));
+        rakNames = [...set];
+
+        const select = $('rakSelect');
+        const current = select.value;
+        select.innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>' +
+            rakNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+        select.value = rakNames.includes(current) ? current : 'ALL';
+
+        $('sync-time').textContent = 'Terakhir sinkron: ' + hhmm(new Date());
+        $('sync-time').className = 'text-sm font-bold text-emerald-600';
+        $('rak-count').textContent = rakNames.length + ' rak';
+        setBadge('✔ Sinkron ' + hhmm(new Date()), 'bg-emerald-50 text-emerald-600');
+    }
+
+    async function loadInitial() {
+        showMsg('Memuat data dari Master Database…', 'info', false);
+        try {
+            processMasterData(await fetchData(false));
+            hideMsg();
+        } catch (err) {
+            console.error('Gagal mengambil data dari GAS:', err);
+            setBadge('⚠ Gagal memuat', 'bg-red-50 text-red-600');
+            showMsg('Gagal memuat data Master Database (' + err.message + ').', 'err', false);
+        }
+        refresh();
+        checkUncheckedRaks();
+    }
+
+    async function syncData() {
+        const btn = $('sync-btn');
+        const original = btn.innerHTML;
+        btn.innerHTML = '⏳ Menyelaraskan...';
+        btn.disabled = true;
+        setBadge('⏳ Sinkronisasi…', 'bg-slate-100 text-slate-500');
+        try {
+            const data = await fetchData(true);
+            processMasterData(data);
+            refresh();
+            checkUncheckedRaks();
+            showMsg(rows.length ? 'Berhasil! Data & daftar PIC telah disinkronkan.' : 'Sinkronisasi selesai, namun data kosong.', rows.length ? 'ok' : 'info');
+        } catch (err) {
+            console.error('Gagal sinkronisasi:', err);
+            setBadge('⚠ Sinkron gagal', 'bg-red-50 text-red-600');
+            showMsg('Gagal melakukan sinkronisasi data (' + err.message + ').', 'err');
+        } finally {
+            btn.innerHTML = original;
+            btn.disabled = false;
+        }
+    }
+
+    // ================= FILTER =================
+    function getFilters() {
+        return { rak: $('rakSelect').value || 'ALL', start: $('startDate').value, end: $('endDate').value };
+    }
+    function inRange(r, start, end) {
+        if (!r.ymd) return !start && !end;
+        if (start && r.ymd < start) return false;
+        if (end && r.ymd > end) return false;
+        return true;
+    }
+    function setRange(start, end) { $('startDate').value = start; $('endDate').value = end; }
+    function setQuickDate(type) {
+        const today = toYMD(new Date());
+        setRange(type === '7days' ? addDays(today, -6) : today.slice(0, 8) + '01', today);
+        refresh();
+    }
+    function resetDateFilter() { setRange('', ''); refresh(); }
+
+    // ================= RENDER UTAMA =================
+    function sortDesc(list) {
+        return list.map((r, i) => [r, i])
+            .sort((a, b) => (b[0].ymd || '').localeCompare(a[0].ymd || '') || b[1] - a[1])
+            .map(x => x[0]);
+    }
+    const flagTd = (v, bad, extra = 'p-3') => `<td class="${extra} text-center ${bad ? 'text-red-600 font-semibold' : ''}">${esc(disp(v))}</td>`;
+    function histRow(r, showRak = true) {
+        return `<tr class="hover:bg-slate-50 transition">
+            ${showRak ? `<td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(r.rak)}</td>` : ''}
+            <td class="p-3 ${showRak ? '' : 'pl-6 '}font-medium whitespace-nowrap">${esc(r.ymd || disp(r.tanggal))}</td>
+            <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${esc(disp(r.shift))}</span></td>
+            ${flagTd(r.pallet, DEFECTS[0].test(r))}${flagTd(r.segel, DEFECTS[1].test(r))}${flagTd(r.penyok, DEFECTS[2].test(r))}${flagTd(r.label, DEFECTS[3].test(r))}
+        </tr>`;
+    }
+    const emptyRow = (cols, msg) => `<tr><td colspan="${cols}" class="p-6 text-center text-slate-400">${msg}</td></tr>`;
+
+    function refresh() {
+        const { rak, start, end } = getFilters();
+        const scoped = rows.filter(r => rak === 'ALL' || r.rak === rak);
+        const ranged = scoped.filter(r => inRange(r, start, end));
+
+        // Label tampilan
+        $('pic-name').textContent = rak === 'ALL' ? '🌐 Summary Keseluruhan Gudang' : (rak.split(' - ')[1] || rak);
+        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] || rak);
+        $('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
+
+        // KPI
+        $('total-inspeksi').textContent = scoped.length;
+        const latest = sortDesc(scoped)[0];
+        $('last-date').textContent = latest ? (latest.ymd || disp(latest.tanggal)) : '-';
+        $('last-shift').textContent = latest ? disp(latest.shift) : '-';
+
+        // Label periode
+        let periode = 'Semua Periode';
+        if (start && end) {
+            const s = new Date(start + 'T00:00:00Z'), e = new Date(end + 'T00:00:00Z');
+            periode = (s.getUTCMonth() === e.getUTCMonth() && s.getUTCFullYear() === e.getUTCFullYear())
+                ? s.toLocaleDateString('id-ID', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'Rentang Filter';
+        } else if (start || end) periode = 'Rentang Filter';
+        $('label-bulan-berjalan').textContent = periode;
+
+        // Temuan
+        const counts = DEFECTS.map(d => ranged.filter(d.test).length);
+        const defects = ranged.map(r => ({ r, issues: issuesOf(r) })).filter(x => x.issues.length);
+        state = { ranged, defects, scoped };
+        $('count-all-defects').textContent = defects.length;
+        $('count-temuan-total').textContent = `${counts.reduce((a, b) => a + b, 0)} temuan pada grafik (1 inspeksi bisa >1 temuan)`;
+
+        renderChart(counts);
+        renderLeaderboard(start, end);
+
+        // Tabel 5 terbaru
+        const top5 = sortDesc(scoped).slice(0, 5);
+        $('table-body').innerHTML = top5.length ? top5.map(r => histRow(r)).join('') : emptyRow(7, 'Belum ada data tersedia.');
+    }
+
+    function renderChart(counts) {
+        if (chart) { chart.data.datasets[0].data = counts; chart.update(); return; }
+        chart = new Chart($('defectChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: DEFECTS.map(d => d.label),
+                datasets: [{ label: 'Jumlah Temuan', data: counts, backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'], borderRadius: 8, barThickness: 35 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                onClick: (e, els) => { if (els.length) showDefectDetail(els[0].index); },
+                onHover: (e, els) => { if (e.native) e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+                scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, precision: 0 } }, x: { grid: { display: false } } },
+                plugins: { legend: { display: false } }
             }
-            if (s.includes(' ')) {
-                return s.split(' ')[0];
-            }
-            return s;
+        });
+    }
+
+    // ================= LEADERBOARD =================
+    function expectedReports(start, end) {
+        const today = toYMD(new Date());
+        const dates = rows.map(r => r.ymd).filter(Boolean).sort();
+        const s = start || dates[0];
+        let e = end || today;
+        if (e > today) e = today;
+        if (!s || s > e) return 0;
+        const days = (Date.parse(e) - Date.parse(s)) / 864e5 + 1;
+        const shifts = new Set(rows.map(r => norm(r.shift)).filter(x => x && x !== '-')).size || 1;
+        return days * shifts;
+    }
+
+    function renderLeaderboard(start, end) {
+        const counts = Object.fromEntries(rakNames.map(n => [n, 0]));
+        rows.forEach(r => { if (inRange(r, start, end) && counts[r.rak] !== undefined) counts[r.rak]++; });
+        const expected = expectedReports(start, end);
+        const sorted = rakNames.map(name => ({ name, count: counts[name] })).sort((a, b) => b.count - a.count);
+        const tbody = $('leaderboard-body');
+        tbody.innerHTML = '';
+        if (!sorted.length) { tbody.innerHTML = emptyRow(4, 'Belum ada data leaderboard.'); return; }
+
+        let rank = 0;
+        sorted.forEach((item, i) => {
+            if (i === 0 || item.count !== sorted[i - 1].count) rank = i + 1;   // skor sama = rank sama
+            const pct = expected ? Math.min(100, Math.round(item.count / expected * 100)) : 0;
+            let badge = ['bg-emerald-50 text-emerald-700', 'Sangat Aktif'];
+            if (item.count === 0) badge = ['bg-red-50 text-red-600', 'Belum Lapor'];
+            else if (pct < 40) badge = ['bg-red-50 text-red-600', 'Kurang Aktif'];
+            else if (pct < 80) badge = ['bg-amber-50 text-amber-700', 'Cukup Aktif'];
+
+            const rankBadge = rank === 1 ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold text-xs">🥇 #1</span>`
+                : rank === 2 ? `<span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded-full font-bold text-xs">🥈 #2</span>`
+                : rank === 3 ? `<span class="bg-amber-50 text-amber-900 px-2 py-0.5 rounded-full font-bold text-xs">🥉 #3</span>`
+                : `<span class="font-bold text-slate-500">#${rank}</span>`;
+
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-blue-50/50 cursor-pointer transition';
+            tr.innerHTML = `
+                <td class="p-4 pl-6 text-center">${rankBadge}</td>
+                <td class="p-4 font-semibold text-slate-800 text-xs">
+                    <div class="flex items-center justify-between gap-2"><span>${esc(item.name)}</span>
+                    <span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold no-print">Klik Detail</span></div>
+                </td>
+                <td class="p-4 text-center font-bold text-blue-600">${item.count} Laporan</td>
+                <td class="p-4 pr-6 text-center"><span class="text-xs px-2.5 py-1 rounded-full font-semibold ${badge[0]}">${badge[1]}${expected ? ' · ' + pct + '%' : ''}</span></td>`;
+            tr.addEventListener('click', () => openPicDetail(item.name));
+            tbody.appendChild(tr);
+        });
+    }
+
+    // ================= RAK BELUM DICEK =================
+    function checkUncheckedRaks() {
+        const target = $('checkDate').value;
+        const box = $('unchecked-list');
+        if (!target || !rakNames.length) {
+            box.innerHTML = `<p class="text-center text-slate-400 italic py-4">${rows.length ? 'Pilih tanggal pengecekan.' : 'Belum ada data.'}</p>`;
+            return;
         }
-
-        function initDashboard() {
-            const todayStr = new Date().toISOString().split('T')[0];
-            document.getElementById('checkDate').value = todayStr;
-            fetchMasterData();
-        }
-
-        function parseDateString(dateStr) {
-            if (!dateStr) return null;
-            const dateOnly = String(dateStr).trim().split(' ')[0]; 
-
-            if (dateOnly.includes('/')) {
-                const parts = dateOnly.split('/');
-                if (parts.length === 3) {
-                    let p0 = parseInt(parts[0], 10);
-                    let p1 = parseInt(parts[1], 10);
-
-                    if (parts[0].length === 4) {
-                        return new Date(`${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`);
-                    }
-
-                    let year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
-                    let month, day;
-
-                    if (p0 > 12) {
-                        day = parts[0];
-                        month = parts[1];
-                    } else if (p1 > 12) {
-                        month = parts[0];
-                        day = parts[1];
-                    } else {
-                        day = parts[0];
-                        month = parts[1];
-                    }
-
-                    return new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
-                }
-            } else if (dateOnly.includes('-')) {
-                const parts = dateOnly.split('-');
-                if (parts.length === 3 && parts[0].length === 4) {
-                    return new Date(dateOnly);
-                }
-            }
-
-            const fallbackDate = new Date(dateStr);
-            return isNaN(fallbackDate.getTime()) ? null : fallbackDate;
-        }
-
-        function fetchMasterData() {
-            fetch(GAS_WEB_APP_URL)
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.length > 1) {
-                        globalMasterRows = data.slice(1);
-                        
-                        const rakSet = [];
-                        globalMasterRows.forEach(row => {
-                            const rakName = row[0];
-                            if (rakName && !rakSet.includes(rakName)) {
-                                rakSet.push(rakName);
-                            }
-                        });
-                        ALL_RAK_NAMES = rakSet;
-
-                        const select = document.getElementById('rakSelect');
-                        const currentSelected = select.value;
-                        select.innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>';
-                        ALL_RAK_NAMES.forEach(name => {
-                            const option = document.createElement('option');
-                            option.value = name;
-                            option.text = name;
-                            select.appendChild(option);
-                        });
-                        if (currentSelected && [...select.options].some(o => o.value === currentSelected)) {
-                            select.value = currentSelected;
-                        } else {
-                            select.value = "ALL";
-                        }
-
-                        checkUncheckedRaks();
-                        setQuickDate('thisMonth');
-                    } else {
-                        resetDashboardEmpty();
-                    }
-                })
-                .catch(err => {
-                    console.error("Gagal mengambil data dari GAS:", err);
-                    alert("Gagal memuat data Master Database.");
-                });
-        }
-
-        function syncData() {
-            const btn = document.getElementById('sync-btn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '⏳ Menyelaraskan...';
-            btn.disabled = true;
-
-            fetch(GAS_WEB_APP_URL + "?action=sync")
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.length > 1) {
-                        globalMasterRows = data.slice(1);
-
-                        const rakSet = [];
-                        globalMasterRows.forEach(row => {
-                            const rakName = row[0];
-                            if (rakName && !rakSet.includes(rakName)) {
-                                rakSet.push(rakName);
-                            }
-                        });
-                        ALL_RAK_NAMES = rakSet;
-
-                        const select = document.getElementById('rakSelect');
-                        const currentSelected = select.value;
-                        select.innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>';
-                        ALL_RAK_NAMES.forEach(name => {
-                            const option = document.createElement('option');
-                            option.value = name;
-                            option.text = name;
-                            select.appendChild(option);
-                        });
-                        if (currentSelected && [...select.options].some(o => o.value === currentSelected)) {
-                            select.value = currentSelected;
-                        } else {
-                            select.value = "ALL";
-                        }
-
-                        loadData();
-                        checkUncheckedRaks();
-                        alert("Berhasil! Data & daftar PIC telah disinkronkan otomatis.");
-                    } else {
-                        alert("Sinkronisasi selesai, namun data kosong.");
-                    }
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                })
-                .catch(err => {
-                    console.error("Gagal sinkronisasi:", err);
-                    alert("Gagal melakukan sinkronisasi data.");
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                });
-        }
-
-        function loadData() {
-            const select = document.getElementById('rakSelect');
-            const selectedRak = select.value;
-
-            globalSemuaRiwayatData = [];
-
-            let filteredRows = globalMasterRows;
-            if (selectedRak !== "ALL") {
-                document.getElementById('pic-name').innerText = selectedRak.split(' - ')[1] || selectedRak;
-                document.getElementById('label-info-kpi').innerText = selectedRak.split(' - ')[0];
-                filteredRows = globalMasterRows.filter(row => row[0] === selectedRak);
-            } else {
-                document.getElementById('pic-name').innerText = "🌐 Summary Keseluruhan Gudang";
-                document.getElementById('label-info-kpi').innerText = "Semua Rak";
-            }
-
-            filteredRows.forEach(row => {
-                const rakName = row[0];
-                const tgl = row[2] || '-';
-                const shift = row[3] || '-';
-                const pallet = row[4] || '-';
-                const segel = row[5] || '-';
-                const penyok = row[6] || '-';
-                const label = row[7] || '-';
-
-                globalSemuaRiwayatData.push({
-                    rakName,
-                    tanggal: tgl,
-                    shift,
-                    pallet,
-                    segel,
-                    penyok,
-                    label,
-                    dateObj: parseDateString(tgl)
-                });
-            });
-
-            if (globalSemuaRiwayatData.length === 0) {
-                resetDashboardEmpty();
-                return;
-            }
-
-            globalSemuaRiwayatData.sort((a, b) => {
-                if (!a.dateObj) return 1;
-                if (!b.dateObj) return -1;
-                return a.dateObj - b.dateObj;
-            });
-
-            document.getElementById('total-inspeksi').innerText = globalSemuaRiwayatData.length;
-
-            const latest = globalSemuaRiwayatData[globalSemuaRiwayatData.length - 1];
-            if (latest) {
-                document.getElementById('last-date').innerText = formatDisplayDate(latest.tanggal);
-                document.getElementById('last-shift').innerText = latest.shift;
-            }
-
-            filterDataByDate();
-
-            const tableBody = document.getElementById('table-body');
-            tableBody.innerHTML = '';
-            const latestFive = [...globalSemuaRiwayatData].reverse().slice(0, 5);
-
-            latestFive.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="p-4 font-semibold text-xs text-slate-700">${item.rakName}</td>
-                    <td class="p-4 font-medium">${formatDisplayDate(item.tanggal)}</td>
-                    <td class="p-4"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${item.shift}</span></td>
-                    <td class="p-4">${item.pallet}</td>
-                    <td class="p-4">${item.segel}</td>
-                    <td class="p-4"><span class="${item.penyok.toLowerCase() === 'ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${item.penyok}</span></td>
-                    <td class="p-4">${item.label}</td>
-                `;
-                tableBody.appendChild(tr);
-            });
-
-            const modalSemuaRiwayatBody = document.getElementById('modal-semua-riwayat-body');
-            modalSemuaRiwayatBody.innerHTML = '';
-            
-            [...globalSemuaRiwayatData].reverse().forEach(item => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition";
-                tr.innerHTML = `
-                    <td class="p-4 pl-6 font-semibold text-xs text-slate-700">${item.rakName}</td>
-                    <td class="p-4 font-medium whitespace-nowrap">${formatDisplayDate(item.tanggal)}</td>
-                    <td class="p-4"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${item.shift}</span></td>
-                    <td class="p-4 text-center ${item.pallet.toLowerCase() === 'ya' ? 'text-red-600 font-semibold' : ''}">${item.pallet}</td>
-                    <td class="p-4 text-center ${item.segel.toLowerCase() === 'tidak' ? 'text-red-600 font-semibold' : ''}">${item.segel}</td>
-                    <td class="p-4 text-center ${item.penyok.toLowerCase() === 'ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${item.penyok}</td>
-                    <td class="p-4 text-center ${item.label.toLowerCase() === 'tidak' ? 'text-red-600 font-semibold' : ''}">${item.label}</td>
-                `;
-                modalSemuaRiwayatBody.appendChild(tr);
-            });
-        }
-
-        function checkUncheckedRaks() {
-            const dateInput = document.getElementById('checkDate').value;
-            const container = document.getElementById('unchecked-list');
-            if (!dateInput || globalMasterRows.length === 0) return;
-
-            const targetDateStr = dateInput; 
-            
-            const checkedRaksOnDate = new Set();
-            globalMasterRows.forEach(row => {
-                if (row[2]) {
-                    const dObj = parseDateString(row[2]);
-                    if (dObj && dObj.toISOString().split('T')[0] === targetDateStr) {
-                        if (row[0]) checkedRaksOnDate.add(row[0]);
-                    }
-                }
-            });
-
-            let uncheckedList = ALL_RAK_NAMES.filter(rakName => !checkedRaksOnDate.has(rakName));
-
-            if (uncheckedList.length === 0) {
-                container.innerHTML = `<div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-medium">Luar biasa! Semua area sudah diinspeksi pada tanggal ini.</div>`;
-            } else {
-                let html = `<p class="text-xs font-bold text-red-600 mb-2">Total Area Belum di Inspeksi (${uncheckedList.length}):</p><ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">`;
-                uncheckedList.forEach(name => {
-                    html += `<li><span class="font-semibold text-slate-900">${name}</span></li>`;
-                });
-                html += `</ul>`;
-                container.innerHTML = html;
-            }
-        }
-
-        function resetDashboardEmpty() {
-            document.getElementById('total-inspeksi').innerText = '0';
-            document.getElementById('last-date').innerText = '-';
-            document.getElementById('last-shift').innerText = '-';
-            document.getElementById('count-all-defects').innerText = '0';
-            document.getElementById('table-body').innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">Belum ada data tersedia.</td></tr>`;
-            document.getElementById('leaderboard-body').innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">Belum ada data leaderboard.</td></tr>`;
-        }
-
-        function setQuickDate(type) {
-            const today = new Date();
-            let start = new Date();
-            if (type === '7days') { start.setDate(today.getDate() - 7); }
-            else if (type === 'thisMonth') { start = new Date(today.getFullYear(), today.getMonth(), 1); }
-            document.getElementById('startDate').value = start.toISOString().split('T')[0];
-            document.getElementById('endDate').value = today.toISOString().split('T')[0];
-            filterDataByDate();
-        }
-
-        function filterDataByDate() {
-            const startVal = document.getElementById('startDate').value;
-            const endVal = document.getElementById('endDate').value;
-            const startDate = startVal ? new Date(startVal) : null;
-            const endDate = endVal ? new Date(endVal) : null;
-
-            if (startVal && endVal) {
-                const sDate = new Date(startVal);
-                const eDate = new Date(endVal);
-                const options = { month: 'short', year: 'numeric' };
-                if (sDate.getMonth() === eDate.getMonth() && sDate.getFullYear() === eDate.getFullYear()) {
-                    document.getElementById('label-bulan-berjalan').innerText = sDate.toLocaleDateString('id-ID', options);
-                } else {
-                    document.getElementById('label-bulan-berjalan').innerText = "Rentang Filter";
-                }
-            } else {
-                document.getElementById('label-bulan-berjalan').innerText = "Semua Periode";
-            }
-
-            let countPalletRusak = 0;
-            let countSegelBuruk = 0;
-            let countPenyok = 0;
-            let countLabelBuruk = 0;
-
-            globalAllDefectsList = [];
-            let picSubmissionCounts = {};
-            ALL_RAK_NAMES.forEach(name => { picSubmissionCounts[name] = 0; });
-
-            if (globalMasterRows.length > 0) {
-                globalMasterRows.forEach(row => {
-                    const dObj = parseDateString(row[2]);
-                    if (!dObj) return;
-
-                    let pass = true;
-                    if (startDate && dObj < startDate) pass = false;
-                    if (endDate && dObj > endDate) pass = false;
-
-                    if (pass) {
-                        const rakName = row[0];
-                        if (picSubmissionCounts[rakName] !== undefined) {
-                            picSubmissionCounts[rakName]++;
-                        }
-
-                        const tgl = row[2] || '-';
-                        const shift = row[3] || '-';
-                        const p = String(row[4]).trim().toLowerCase();
-                        const s = String(row[5]).trim().toLowerCase();
-                        const py = String(row[6]).trim().toLowerCase();
-                        const l = String(row[7]).trim().toLowerCase();
-
-                        let issues = [];
-                        if (p === 'ya') { countPalletRusak++; issues.push("Pallet Rusak"); }
-                        if (s === 'tidak') { countSegelBuruk++; issues.push("Segel Tidak Baik"); }
-                        if (py === 'ya') { countPenyok++; issues.push("Produk Penyok"); }
-                        if (l === 'tidak') { countLabelBuruk++; issues.push("Label Tidak Baik"); }
-
-                        if (issues.length > 0) {
-                            globalAllDefectsList.push({
-                                rakName,
-                                tanggal: tgl,
-                                shift,
-                                status: issues.join(", ")
-                            });
-                        }
-                    }
-                });
-            }
-
-            document.getElementById('count-all-defects').innerText = globalAllDefectsList.length;
-            renderDefectChart(countPalletRusak, countSegelBuruk, countPenyok, countLabelBuruk);
-            renderLeaderboard(picSubmissionCounts);
-        }
-
-        function renderLeaderboard(countsObj) {
-            const tbody = document.getElementById('leaderboard-body');
-            tbody.innerHTML = '';
-
-            let sortedArr = Object.keys(countsObj).map(name => {
-                return { name, count: countsObj[name] };
-            }).sort((a, b) => b.count - a.count);
-
-            sortedArr.forEach((item, index) => {
-                let badgeClass = "bg-emerald-50 text-emerald-700";
-                let badgeText = "Sangat Aktif";
-                if (item.count === 0) {
-                    badgeClass = "bg-red-50 text-red-600";
-                    badgeText = "Belum Lapor";
-                } else if (item.count < 3) {
-                    badgeClass = "bg-amber-50 text-amber-700";
-                    badgeText = "Cukup Aktif";
-                }
-
-                let rankBadge = `<span class="font-bold text-slate-500">#${index + 1}</span>`;
-                if (index === 0) rankBadge = `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold text-xs">🥇 #1</span>`;
-                else if (index === 1) rankBadge = `<span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded-full font-bold text-xs">🥈 #2</span>`;
-                else if (index === 2) rankBadge = `<span class="bg-amber-50 text-amber-900 px-2 py-0.5 rounded-full font-bold text-xs">🥉 #3</span>`;
-
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-blue-50/50 cursor-pointer transition";
-                tr.setAttribute('onclick', `openPicDetail('${item.name}')`);
-                tr.innerHTML = `
-                    <td class="p-4 pl-6 text-center">${rankBadge}</td>
-                    <td class="p-4 font-semibold text-slate-800 text-xs flex items-center justify-between">
-                        <span>${item.name}</span>
-                        <span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold no-print">Klik Detail</span>
-                    </td>
-                    <td class="p-4 text-center font-bold text-blue-600">${item.count} Laporan</td>
-                    <td class="p-4 pr-6 text-center"><span class="text-xs px-2.5 py-1 rounded-full font-semibold ${badgeClass}">${badgeText}</span></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function openPicDetail(rakName) {
-            document.getElementById('pic-modal-title').innerText = `Detail Laporan: ${rakName}`;
-            const tbody = document.getElementById('modal-pic-body');
-            tbody.innerHTML = '';
-
-            const startVal = document.getElementById('startDate').value;
-            const endVal = document.getElementById('endDate').value;
-            const startDate = startVal ? new Date(startVal) : null;
-            const endDate = endVal ? new Date(endVal) : null;
-
-            const filteredRows = globalMasterRows.filter(row => {
-                if (row[0] !== rakName) return false;
-                const dObj = parseDateString(row[2]);
-                if (!dObj) return true;
-                if (startDate && dObj < startDate) return false;
-                if (endDate && dObj > endDate) return false;
-                return true;
-            });
-
-            if (filteredRows.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">Tidak ada riwayat laporan untuk PIC ini pada rentang tanggal tersebut.</td></tr>`;
-            } else {
-                [...filteredRows].reverse().forEach(row => {
-                    const tgl = row[2];
-                    const shift = row[3];
-                    const pallet = row[4];
-                    const segel = row[5];
-                    const penyok = row[6];
-                    const label = row[7];
-
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-slate-50 transition";
-                    tr.innerHTML = `
-                        <td class="p-3 pl-6 font-medium whitespace-nowrap">${formatDisplayDate(tgl)}</td>
-                        <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${shift}</span></td>
-                        <td class="p-3 text-center ${String(pallet).toLowerCase() === 'ya' ? 'text-red-600 font-semibold' : ''}">${pallet}</td>
-                        <td class="p-3 text-center ${String(segel).toLowerCase() === 'tidak' ? 'text-red-600 font-semibold' : ''}">${segel}</td>
-                        <td class="p-3 text-center ${String(penyok).toLowerCase() === 'ya' ? 'text-red-600 font-semibold' : 'text-emerald-600'}">${penyok}</td>
-                        <td class="p-3 pr-6 text-center ${String(label).toLowerCase() === 'tidak' ? 'text-red-600 font-semibold' : ''}">${label}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
-
-            document.getElementById('picDetailModal').classList.remove('hidden');
-        }
-
-        function closePicDetailModal() { document.getElementById('picDetailModal').classList.add('hidden'); }
-
-        function resetDateFilter() {
-            document.getElementById('startDate').value = '';
-            document.getElementById('endDate').value = '';
-            filterDataByDate();
-        }
-
-        function showDefectDetail(defectIndex) {
-            if (globalMasterRows.length === 0) return;
-
-            const startVal = document.getElementById('startDate').value;
-            const endVal = document.getElementById('endDate').value;
-            const startDate = startVal ? new Date(startVal) : null;
-            const endDate = endVal ? new Date(endVal) : null;
-
-            let modalTitle = "";
-            let filteredList = [];
-
-            globalMasterRows.forEach(row => {
-                const dObj = parseDateString(row[2]);
-                if (!dObj) return;
-
-                let pass = true;
-                if (startDate && dObj < startDate) pass = false;
-                if (endDate && dObj > endDate) pass = false;
-                if (!pass) return;
-
-                const rakName = row[0];
-                const tgl = row[2];
-                const shift = row[3];
-                const p = String(row[4]).trim().toLowerCase();
-                const s = String(row[5]).trim().toLowerCase();
-                const py = String(row[6]).trim().toLowerCase();
-                const l = String(row[7]).trim().toLowerCase();
-
-                if (defectIndex === 0) {
-                    modalTitle = "Detail Riwayat: Pallet Rusak (Ya)";
-                    if (p === 'ya') filteredList.push({ rakName, tanggal: tgl, shift, status: "Pallet Rusak: Ya" });
-                } else if (defectIndex === 1) {
-                    modalTitle = "Detail Riwayat: Segel Tidak Baik";
-                    if (s === 'tidak') filteredList.push({ rakName, tanggal: tgl, shift, status: "Segel: Tidak Baik" });
-                } else if (defectIndex === 2) {
-                    modalTitle = "Detail Riwayat: Produk Penyok (Ya)";
-                    if (py === 'ya') filteredList.push({ rakName, tanggal: tgl, shift, status: "Produk Penyok: Ya" });
-                } else if (defectIndex === 3) {
-                    modalTitle = "Detail Riwayat: Label Tidak Baik";
-                    if (l === 'tidak') filteredList.push({ rakName, tanggal: tgl, shift, status: "Label: Tidak Baik" });
-                }
-            });
-
-            document.getElementById('defect-modal-title').innerText = modalTitle;
-            const modalBody = document.getElementById('modal-defect-table-body');
-            modalBody.innerHTML = '';
-
-            if (filteredList.length === 0) {
-                modalBody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">Tidak ada riwayat temuan untuk kategori ini pada rentang tanggal tersebut.</td></tr>`;
-            } else {
-                [...filteredList].reverse().forEach(item => {
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-slate-50 transition";
-                    tr.innerHTML = `
-                        <td class="p-3 pl-6 font-semibold text-xs text-slate-700">${item.rakName}</td>
-                        <td class="p-3 font-medium whitespace-nowrap">${formatDisplayDate(item.tanggal)}</td>
-                        <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${item.shift}</span></td>
-                        <td class="p-3 pr-6 text-red-600 font-semibold">${item.status}</td>
-                    `;
-                    modalBody.appendChild(tr);
-                });
-            }
-
-            document.getElementById('defectModal').classList.remove('hidden');
-        }
-
-        function closeDefectModal() { document.getElementById('defectModal').classList.add('hidden'); }
-
-        function openSemuaTemuanModal() {
-            const modalBody = document.getElementById('modal-semua-temuan-body');
-            modalBody.innerHTML = '';
-            if (globalAllDefectsList.length === 0) {
-                modalBody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">Tidak ada riwayat temuan masalah pada rentang tanggal ini.</td></tr>`;
-            } else {
-                [...globalAllDefectsList].reverse().forEach(item => {
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-red-50/30 transition";
-                    tr.innerHTML = `
-                        <td class="p-3 pl-6 font-semibold text-xs text-slate-700">${item.rakName}</td>
-                        <td class="p-3 font-medium whitespace-nowrap">${formatDisplayDate(item.tanggal)}</td>
-                        <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${item.shift}</span></td>
-                        <td class="p-3 pr-6 text-red-600 font-semibold">${item.status}</td>
-                    `;
-                    modalBody.appendChild(tr);
-                });
-            }
-            document.getElementById('semuaTemuanModal').classList.remove('hidden');
-        }
-
-        function closeSemuaTemuanModal() { document.getElementById('semuaTemuanModal').classList.add('hidden'); }
-        function openSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.remove('hidden'); }
-        function closeSemuaRiwayatModal() { document.getElementById('semuaRiwayatModal').classList.add('hidden'); }
-
-        function exportToCSV() {
-            if (globalSemuaRiwayatData.length === 0) {
-                alert("Tidak ada data untuk diexport.");
-                return;
-            }
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Rak / PIC,Tanggal,Shift,Pallet Rusak,Segel Baik,Produk Penyok,Label Baik\r\n";
-
-            globalSemuaRiwayatData.forEach(row => {
-                let rowData = [
-                    `"${row.rakName}"`,
-                    `"${formatDisplayDate(row.tanggal)}"`,
-                    `"${row.shift}"`,
-                    `"${row.pallet}"`,
-                    `"${row.segel}"`,
-                    `"${row.penyok}"`,
-                    `"${row.label}"`
-                ];
-                csvContent += rowData.join(",") + "\r\n";
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `laporan_monitoring_racking_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function renderDefectChart(pallet, segel, penyok, label) {
-            const ctx = document.getElementById('defectChart').getContext('2d');
-            if (defectChartInstance) defectChartInstance.destroy();
-
-            defectChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Pallet Rusak', 'Segel Tidak Baik', 'Produk Penyok', 'Label Tidak Baik'],
-                    datasets: [{
-                        label: 'Jumlah Temuan',
-                        data: [pallet, segel, penyok, label],
-                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'],
-                        borderRadius: 8,
-                        barThickness: 35
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    onClick: function(event, elements) {
-                        if (elements.length > 0) {
-                            showDefectDetail(elements[0].index);
-                        }
-                    },
-                    scales: { 
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, 
-                        x: { grid: { display: false } } 
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
-
-        initDashboard();
-    </script>
+        const done = new Set(rows.filter(r => r.ymd === target).map(r => r.rak));
+        const unchecked = rakNames.filter(n => !done.has(n));
+        box.innerHTML = unchecked.length === 0
+            ? `<div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-medium">Luar biasa! Semua area sudah diinspeksi pada tanggal ini.</div>`
+            : `<p class="text-xs font-bold text-red-600 mb-2">Total Area Belum di Inspeksi (${unchecked.length}):</p>
+               <ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">${unchecked.map(n => `<li><span class="font-semibold text-slate-900">${esc(n)}</span></li>`).join('')}</ul>`;
+    }
+
+    // ================= MODAL =================
+    function openModal({ title, sub, cols, body, wide }) {
+        $('modal-title').textContent = title;
+        $('modal-sub').textContent = sub || '';
+        $('modal-box').className = `bg-white rounded-2xl w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'} max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`;
+        $('modal-head').innerHTML = cols.map((c, i) => `<th class="p-3 ${i === 0 ? 'pl-6' : ''} font-semibold">${c}</th>`).join('');
+        $('modal-body').innerHTML = body;
+        $('modal').classList.remove('hidden');
+        $('modal-close').focus();
+    }
+    function closeModal() { $('modal').classList.add('hidden'); }
+    $('modal').addEventListener('click', e => { if (e.target === $('modal')) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    const HIST_COLS = ['Tanggal', 'Shift', 'Pallet Rusak', 'Segel Baik', 'Produk Penyok', 'Label Baik'];
+
+    function openSemuaRiwayatModal() {
+        openModal({
+            title: 'Semua Riwayat Inspeksi', sub: 'Seluruh laporan pada rak terpilih (semua periode)',
+            cols: ['Rak / PIC', ...HIST_COLS], wide: true,
+            body: state.scoped.length ? sortDesc(state.scoped).map(r => histRow(r)).join('') : emptyRow(7, 'Belum ada data tersedia.')
+        });
+    }
+    function openPicDetail(rakName) {
+        const { start, end } = getFilters();
+        const list = sortDesc(rows.filter(r => r.rak === rakName && inRange(r, start, end)));
+        openModal({
+            title: `Detail Laporan: ${rakName}`, sub: 'Riwayat inspeksi pada rentang tanggal terpilih',
+            cols: HIST_COLS, wide: true,
+            body: list.length ? list.map(r => histRow(r, false)).join('') : emptyRow(6, 'Tidak ada riwayat laporan untuk PIC ini pada rentang tanggal tersebut.')
+        });
+    }
+    const defectRows = list => list.map(x => `<tr class="hover:bg-red-50/30 transition">
+        <td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(x.r.rak)}</td>
+        <td class="p-3 font-medium whitespace-nowrap">${esc(x.r.ymd || disp(x.r.tanggal))}</td>
+        <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${esc(disp(x.r.shift))}</span></td>
+        <td class="p-3 pr-6 text-red-600 font-semibold">${esc(x.issues.join(', '))}</td></tr>`).join('');
+
+    function openSemuaTemuanModal() {
+        const list = sortDesc(state.defects.map(x => x.r)).map(r => state.defects.find(x => x.r === r));
+        openModal({
+            title: `Detail Inspeksi Bermasalah (${$('label-bulan-berjalan').textContent})`,
+            sub: 'Inspeksi dengan ketidaksesuaian pada rak & rentang tanggal terpilih',
+            cols: ['Rak / PIC', 'Tanggal', 'Shift', 'Jenis Temuan Masalah'],
+            body: list.length ? defectRows(list) : emptyRow(4, 'Tidak ada riwayat temuan masalah pada rentang tanggal ini.')
+        });
+    }
+    function showDefectDetail(index) {
+        const d = DEFECTS[index];
+        const list = sortDesc(state.ranged.filter(d.test)).map(r => ({ r, issues: [d.label] }));
+        openModal({
+            title: `Detail Riwayat: ${d.label}`, sub: 'Daftar inspeksi kategori ini pada rak & rentang tanggal terpilih',
+            cols: ['Rak / PIC', 'Tanggal', 'Shift', 'Status Keterangan'],
+            body: list.length ? defectRows(list) : emptyRow(4, 'Tidak ada riwayat temuan untuk kategori ini pada rentang tanggal tersebut.')
+        });
+    }
+
+    // ================= EXPORT =================
+    function exportToCSV() {
+        const list = sortDesc(state.ranged);
+        if (!list.length) { showMsg('Tidak ada data untuk diexport pada filter ini.', 'err'); return; }
+        const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const lines = [['Rak / PIC', 'Tanggal', 'Shift', 'Pallet Rusak', 'Segel Baik', 'Produk Penyok', 'Label Baik'].map(cell).join(',')];
+        list.forEach(r => lines.push([r.rak, r.ymd || r.tanggal, r.shift, r.pallet, r.segel, r.penyok, r.label].map(cell).join(',')));
+        const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `laporan_monitoring_racking_${toYMD(new Date())}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showMsg(`${list.length} baris diunduh (sesuai filter aktif).`, 'ok');
+    }
+
+    // ================= INISIALISASI =================
+    (function init() {
+        const today = toYMD(new Date());
+        $('checkDate').value = today;
+        setRange(today.slice(0, 8) + '01', today);
+        $('rakSelect').innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>';
+        loadInitial();
+    })();
+</script>
 </body>
 </html>
