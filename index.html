@@ -78,15 +78,15 @@
                     <span id="last-shift" class="text-xs font-medium text-slate-500 bg-blue-50 text-blue-700 px-2 py-0.5 rounded">-</span>
                 </div>
             </div>
-            <!-- Kartu Total Keseluruhan Temuan Masalah -->
+            <!-- Kartu Temuan Bulan Berjalan -->
             <div onclick="openSemuaTemuanModal()" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-red-300 hover:shadow-md transition group flex flex-col justify-between">
                 <div class="flex justify-between items-center">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-red-600 transition">Total Keseluruhan Temuan</p>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-red-600 transition">Temuan Bulan Berjalan</p>
                     <span class="text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded font-bold">Klik Detail</span>
                 </div>
                 <div class="flex items-baseline justify-between mt-2">
                     <h3 id="count-all-defects" class="text-3xl font-extrabold text-red-600">0</h3>
-                    <span class="text-xs text-red-600/80">Akumulasi Masalah</span>
+                    <span id="label-bulan-berjalan" class="text-xs text-red-600/80 font-medium">Bulan Ini</span>
                 </div>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
@@ -271,8 +271,8 @@
         <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <div>
-                    <h3 class="text-base font-bold text-slate-900">Detail Seluruh Temuan Masalah</h3>
-                    <p class="text-xs text-slate-500">Daftar seluruh inspeksi yang memiliki ketidaksesuaian/kerusakan</p>
+                    <h3 class="text-base font-bold text-slate-900">Detail Temuan Bulan Berjalan</h3>
+                    <p class="text-xs text-slate-500">Daftar seluruh inspeksi yang memiliki ketidaksesuaian/kerusakan pada bulan ini</p>
                 </div>
                 <button onclick="closeSemuaTemuanModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
             </div>
@@ -330,7 +330,7 @@
     <script>
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxbO6R40dq3NbNo6jE5FRV3wQbysvvk74suPLmu2EhojEjWIIZkqh4j_N57v9HGTeteTQ/exec";
 
-        let ALL_RAK_NAMES = []; // Diisi otomatis secara dinamis dari data Master
+        let ALL_RAK_NAMES = []; 
         let defectChartInstance = null;
         let globalMasterRows = [];
         let globalAllDefectsList = [];
@@ -402,7 +402,6 @@
                     if (data && data.length > 1) {
                         globalMasterRows = data.slice(1);
                         
-                        // AMBIL DAFTAR RAK / PIC SECARA OTOMATIS DARI KOLOM PERTAMA MASTER DATA
                         const rakSet = [];
                         globalMasterRows.forEach(row => {
                             const rakName = row[0];
@@ -412,7 +411,6 @@
                         });
                         ALL_RAK_NAMES = rakSet;
 
-                        // UPDATE DROPDOWN PILIH RAK OTOMATIS
                         const select = document.getElementById('rakSelect');
                         const currentSelected = select.value;
                         select.innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>';
@@ -428,8 +426,8 @@
                             select.value = "ALL";
                         }
 
-                        loadData();
-                        checkUncheckedRaks();
+                        // Otomatis set filter tanggal default ke Bulan Ini saat pertama kali load
+                        setQuickDate('thisMonth');
                     } else {
                         resetDashboardEmpty();
                     }
@@ -452,7 +450,6 @@
                     if (data && data.length > 1) {
                         globalMasterRows = data.slice(1);
 
-                        // PERBARUI DAFTAR RAK OTOMATIS SAAT SYNC
                         const rakSet = [];
                         globalMasterRows.forEach(row => {
                             const rakName = row[0];
@@ -649,6 +646,20 @@
             const endVal = document.getElementById('endDate').value;
             const startDate = startVal ? new Date(startVal) : null;
             const endDate = endVal ? new Date(endVal) : null;
+
+            // Update label informasi bulan berjalan di kartu KPI
+            if (startVal && endVal) {
+                const sDate = new Date(startVal);
+                const eDate = new Date(endVal);
+                const options = { month: 'short', year: 'numeric' };
+                if (sDate.getMonth() === eDate.getMonth() && sDate.getFullYear() === eDate.getFullYear()) {
+                    document.getElementById('label-bulan-berjalan').innerText = sDate.toLocaleDateString('id-ID', options);
+                } else {
+                    document.getElementById('label-bulan-berjalan').innerText = "Rentang Filter";
+                }
+            } else {
+                document.getElementById('label-bulan-berjalan').innerText = "Semua Periode";
+            }
 
             let countPalletRusak = 0;
             let countSegelBuruk = 0;
