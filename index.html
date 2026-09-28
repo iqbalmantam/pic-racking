@@ -135,7 +135,7 @@
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
         <div class="p-6 border-b border-slate-100">
             <h2 class="text-base font-bold text-slate-800">🏆 Leaderboard Kepatuhan PIC (Audit Compliance)</h2>
-            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporannya. Keaktifan = jumlah laporan ÷ (jumlah hari × jumlah shift) pada rentang terpilih.</p>
+            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporannya. Keaktifan = jumlah hari kerja (Senin–Sabtu) yang sudah ada laporan ÷ total hari kerja pada rentang terpilih.</p>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
@@ -449,24 +449,31 @@
         let e = end || today;
         if (e > today) e = today;
         if (!s || s > e) return 0;
-        const days = (Date.parse(e) - Date.parse(s)) / 864e5 + 1;
-        const shifts = new Set(rows.map(r => norm(r.shift)).filter(x => x && x !== '-')).size || 1;
-        return days * shifts;
+        let workdays = 0;
+        for (let d = s; d <= e; d = addDays(d, 1)) if (!isSunday(d)) workdays++;
+        return workdays;
     }
+    const isSunday = ymd => new Date(ymd + 'T00:00:00Z').getUTCDay() === 0;
 
     function renderLeaderboard(start, end) {
         const counts = Object.fromEntries(rakNames.map(n => [n, 0]));
-        rows.forEach(r => { if (inRange(r, start, end) && counts[r.rak] !== undefined) counts[r.rak]++; });
+        const daysDone = Object.fromEntries(rakNames.map(n => [n, new Set()]));
+        rows.forEach(r => {
+            if (!inRange(r, start, end) || counts[r.rak] === undefined) return;
+            counts[r.rak]++;
+            if (r.ymd && !isSunday(r.ymd)) daysDone[r.rak].add(r.ymd);
+        });
         const expected = expectedReports(start, end);
-        const sorted = rakNames.map(name => ({ name, count: counts[name] })).sort((a, b) => b.count - a.count);
+        const sorted = rakNames.map(name => ({ name, count: counts[name], days: daysDone[name].size }))
+            .sort((a, b) => b.count - a.count || b.days - a.days);
         const tbody = $('leaderboard-body');
         tbody.innerHTML = '';
         if (!sorted.length) { tbody.innerHTML = emptyRow(4, 'Belum ada data leaderboard.'); return; }
 
         let rank = 0;
         sorted.forEach((item, i) => {
-            if (i === 0 || item.count !== sorted[i - 1].count) rank = i + 1;   // skor sama = rank sama
-            const pct = expected ? Math.min(100, Math.round(item.count / expected * 100)) : 0;
+            if (i === 0 || item.count !== sorted[i - 1].count || item.days !== sorted[i - 1].days) rank = i + 1;   // skor sama = rank sama
+            const pct = expected ? Math.min(100, Math.round(item.days / expected * 100)) : 0;
             let badge = ['bg-emerald-50 text-emerald-700', 'Sangat Aktif'];
             if (item.count === 0) badge = ['bg-red-50 text-red-600', 'Belum Lapor'];
             else if (pct < 40) badge = ['bg-red-50 text-red-600', 'Kurang Aktif'];
@@ -486,7 +493,7 @@
                     <span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold no-print">Klik Detail</span></div>
                 </td>
                 <td class="p-4 text-center font-bold text-blue-600">${item.count} Laporan</td>
-                <td class="p-4 pr-6 text-center"><span class="text-xs px-2.5 py-1 rounded-full font-semibold ${badge[0]}">${badge[1]}${expected ? ' · ' + pct + '%' : ''}</span></td>`;
+                <td class="p-4 pr-6 text-center"><span class="text-xs px-2.5 py-1 rounded-full font-semibold ${badge[0]}">${badge[1]}${expected ? ` · ${item.days}/${expected} hari (${pct}%)` : ''}</span></td>`;
             tr.addEventListener('click', () => openPicDetail(item.name));
             tbody.appendChild(tr);
         });
