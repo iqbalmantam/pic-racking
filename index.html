@@ -11,7 +11,9 @@
     <style>
         .modal-body-scroll { max-height: 60vh; overflow-y: auto; }
         .print-only { display: none; }
+        #leaderboard-scroll thead th { position: sticky; top: 0; background: #f8fafc; z-index: 1; box-shadow: 0 1px 0 #e2e8f0; }
         @media print {
+            #leaderboard-scroll { max-height: none !important; overflow: visible !important; }
             body { background: white !important; }
             .no-print, #modal { display: none !important; }
             .print-only { display: block !important; }
@@ -135,9 +137,10 @@
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
         <div class="p-6 border-b border-slate-100">
             <h2 class="text-base font-bold text-slate-800">🏆 Leaderboard Kepatuhan PIC (Audit Compliance)</h2>
-            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporannya. Keaktifan = jumlah hari kerja (Senin–Sabtu) yang sudah ada laporan ÷ total hari kerja pada rentang terpilih.</p>
+            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporannya. Keaktifan = jumlah hari kerja (Senin–Sabtu) yang sudah ada laporan ÷ total hari kerja pada rentang terpilih. Urutan: hari terlapor terbanyak, lalu jumlah laporan.</p>
+            <p id="leaderboard-summary" class="text-xs font-semibold text-red-600 mt-1"></p>
         </div>
-        <div class="overflow-x-auto">
+        <div id="leaderboard-scroll" class="overflow-auto max-h-[420px]">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
@@ -465,7 +468,14 @@
         });
         const expected = expectedReports(start, end);
         const sorted = rakNames.map(name => ({ name, count: counts[name], days: daysDone[name].size }))
-            .sort((a, b) => b.count - a.count || b.days - a.days);
+            .sort((a, b) => b.days - a.days || b.count - a.count);
+        const pctOf = it => expected ? Math.min(100, Math.round(it.days / expected * 100)) : 0;
+        const belum = sorted.filter(it => it.count === 0).length;
+        const kurang = sorted.filter(it => it.count > 0 && pctOf(it) < 40).length;
+        const parts = [];
+        if (belum) parts.push(`${belum} PIC belum lapor`);
+        if (kurang) parts.push(`${kurang} kurang aktif`);
+        $('leaderboard-summary').textContent = !sorted.length ? '' : (parts.length ? '⚠ ' + parts.join(' · ') : (expected ? '✔ Semua PIC aktif' : ''));
         const tbody = $('leaderboard-body');
         tbody.innerHTML = '';
         if (!sorted.length) { tbody.innerHTML = emptyRow(4, 'Belum ada data leaderboard.'); return; }
