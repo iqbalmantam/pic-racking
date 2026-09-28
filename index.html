@@ -426,7 +426,8 @@
                             select.value = "ALL";
                         }
 
-                        // Otomatis set filter tanggal default ke Bulan Ini saat pertama kali load
+                        // Jalankan pengecekan rak belum dicek SEGERA setelah data siap
+                        checkUncheckedRaks();
                         setQuickDate('thisMonth');
                     } else {
                         resetDashboardEmpty();
@@ -580,35 +581,26 @@
             });
         }
 
+        // OPTIMASI: Dipercepat dengan menggunakan Set dan cache tanggal agar instan
         function checkUncheckedRaks() {
             const dateInput = document.getElementById('checkDate').value;
             const container = document.getElementById('unchecked-list');
-            if (!dateInput) return;
+            if (!dateInput || globalMasterRows.length === 0) return;
 
             const targetDateStr = dateInput; 
-            let uncheckedList = [];
-
-            ALL_RAK_NAMES.forEach(rakName => {
-                let hasCheckedOnDate = false;
-                globalMasterRows.forEach(row => {
-                    if (row[0] === rakName) {
-                        const dObj = parseDateString(row[2]);
-                        if (dObj) {
-                            if (dObj.toISOString().split('T')[0] === targetDateStr) {
-                                hasCheckedOnDate = true;
-                            }
-                        }
+            
+            // Kumpulkan semua nama rak yang sudah dicek pada tanggal tersebut ke dalam Set agar pencarian O(1) cepat
+            const checkedRaksOnDate = new Set();
+            globalMasterRows.forEach(row => {
+                if (row[2]) {
+                    const dObj = parseDateString(row[2]);
+                    if (dObj && dObj.toISOString().split('T')[0] === targetDateStr) {
+                        if (row[0]) checkedRaksOnDate.add(row[0]);
                     }
-                });
-                if (!hasCheckedOnDate) {
-                    uncheckedList.push(rakName);
                 }
             });
 
-            if (globalMasterRows.length === 0) {
-                container.innerHTML = `<p class="text-center text-slate-400 italic mt-6">Memuat status pemeriksaan...</p>`;
-                return;
-            }
+            let uncheckedList = ALL_RAK_NAMES.filter(rakName => !checkedRaksOnDate.has(rakName));
 
             if (uncheckedList.length === 0) {
                 container.innerHTML = `<div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-medium">Luar biasa! Semua rak sudah diperiksa pada tanggal ini.</div>`;
@@ -647,7 +639,6 @@
             const startDate = startVal ? new Date(startVal) : null;
             const endDate = endVal ? new Date(endVal) : null;
 
-            // Update label informasi bulan berjalan di kartu KPI
             if (startVal && endVal) {
                 const sDate = new Date(startVal);
                 const eDate = new Date(endVal);
