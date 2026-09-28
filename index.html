@@ -143,8 +143,8 @@
                     <input type="date" id="checkDate" onchange="checkUncheckedRaks()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500 font-semibold">
                 </div>
                 
-                <!-- Diubah agar menampilkan seluruh daftar secara penuh tanpa batasan scroll yang terpotong -->
-                <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 text-sm text-slate-600">
+                <!-- Full ke bawah tanpa batasan tinggi/scroll -->
+                <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 text-sm text-slate-600 h-full flex flex-col justify-start">
                     <p class="text-center text-slate-400 italic mt-6">Memuat status pemeriksaan...</p>
                 </div>
             </div>
@@ -609,7 +609,7 @@
             if (uncheckedList.length === 0) {
                 container.innerHTML = `<div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-medium">Luar biasa! Semua area sudah diinspeksi pada tanggal ini.</div>`;
             } else {
-                let html = `<p class="text-xs font-bold text-red-600 mb-2">Total ${uncheckedList.length} Area Belum di Inspeksi:</p><ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">`;
+                let html = `<p class="text-xs font-bold text-red-600 mb-2">Total Area Belum di Inspeksi (${uncheckedList.length}):</p><ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">`;
                 uncheckedList.forEach(name => {
                     html += `<li><span class="font-semibold text-slate-900">${name}</span></li>`;
                 });
