@@ -459,55 +459,54 @@
     }
 
     function renderComplianceChart(start, end, rak) {
-        let pct, desc, sub;
-        if (rak === 'ALL') {
-            // Semua rak: persentase rak (PIC) yang sudah punya laporan/dicek pada rentang terpilih
-            const total = rakNames.length;
-            const checked = new Set(rows.filter(r => inRange(r, start, end) && rakNames.includes(r.rak)).map(r => r.rak)).size;
-            pct = total > 0 ? Math.round((checked / total) * 100) : 0;
-            desc = `${checked} dari ${total} rak sudah dicek`;
-            sub = 'Persentase rak yang sudah dicek pada periode terpilih';
-        } else {
-            // Satu rak: persentase hari kerja yang sudah ada laporan
-            const expected = expectedReports(start, end);
-            const days = new Set(rows.filter(r => r.rak === rak && inRange(r, start, end) && r.ymd && !isSunday(r.ymd)).map(r => r.ymd));
-            pct = expected > 0 ? Math.min(100, Math.round((days.size / expected) * 100)) : 0;
-            desc = `Tercapai ${days.size} dari ${expected} hari kerja`;
-            sub = 'Persentase hari terlapor vs hari kerja pada periode terpilih';
-        }
-        const remainder = Math.max(0, 100 - pct);
-        $('compliance-badge').textContent = pct + '%';
-        $('compliance-desc').textContent = desc;
-        $('compliance-sub').textContent = sub;
+        // Persentase rak yang dicek di tiap tanggal (Senin-Sabtu). Tanpa filter tanggal = bulan berjalan.
+        const today = toYMD(new Date());
+        let s = start, e = end;
+        if (!s && !e) s = today.slice(0, 8) + '01';
+        if (!s) s = (rows.map(r => r.ymd).filter(Boolean).sort()[0]) || today;
+        if (!e || e > today) e = today;
+        const total = rak === 'ALL' ? rakNames.length : 1;
 
-        const ctx = $('complianceChart').getContext('2d');
+        const byDate = {};
+        rows.forEach(r => {
+            if (!r.ymd || r.ymd < s || r.ymd > e) return;
+            if (rak === 'ALL' ? !rakNames.includes(r.rak) : r.rak !== rak) return;
+            (byDate[r.ymd] = byDate[r.ymd] || new Set()).add(r.rak);
+        });
+
+        const dates = [];
+        if (s <= e) for (let d = s; d <= e; d = addDays(d, 1)) if (!isSunday(d)) dates.push(d);
+        const checked = dates.map(d => byDate[d] ? byDate[d].size : 0);
+        const pcts = checked.map(c => total > 0 ? Math.round((c / total) * 100) : 0);
+        const colors = pcts.map(p => p >= 80 ? '#10b981' : p >= 50 ? '#f59e0b' : '#ef4444');
+        const avg = pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
+
+        $('compliance-badge').textContent = 'Rata-rata ' + avg + '%';
+        $('compliance-sub').textContent = rak === 'ALL' ? 'Persentase rak yang dicek per tanggal (Senin–Sabtu)' : 'Status pengecekan rak ini per tanggal (Senin–Sabtu)';
+        $('compliance-desc').textContent = dates.length
+            ? `${dates[0]} s/d ${dates[dates.length - 1]} • ${dates.length} hari kerja`
+            : 'Belum ada hari kerja pada rentang ini';
+
+        const labels = dates.map(d => d.slice(8));
         if (complianceChart) {
-            complianceChart.data.datasets[0].data = [pct, remainder];
-            complianceChart.update();
-            return;
+            complianceChart.destroy();
+            complianceChart = null;
         }
-
-        complianceChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Tercapai (%)', 'Belum (%)'],
-                datasets: [{
-                    data: [pct, remainder],
-                    backgroundColor: ['#10b981', '#f1f5f9'],
-                    borderWidth: 0,
-                    cutout: '75%'
-                }]
-            },
+        complianceChart = new Chart($('complianceChart').getContext('2d'), {
+            type: 'bar',
+            data: { labels, datasets: [{ data: pcts, backgroundColor: colors, borderRadius: 3, maxBarThickness: 18 }] },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' }, ticks: { callback: v => v + '%', stepSize: 25 } },
+                    x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0, font: { size: 10 } } }
+                },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
-                                return context.dataIndex === 0 ? ` Capaian: ${pct}%` : ` Sisa: ${remainder}%`;
-                            }
+                            title: items => dates[items[0].dataIndex],
+                            label: c => ` ${pcts[c.dataIndex]}% (${checked[c.dataIndex]} dari ${total} rak dicek)`
                         }
                     }
                 }
