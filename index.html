@@ -226,7 +226,7 @@
 </div>
 
 <script>
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxbO6R40dq3NbNo6jE5FRV3wQbysvvk74suPLmu2EhojEjWIIZkqh4j_N57v9HGTeteTQ/exec";
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxgzQd5aLpOZNXRa1ss0Wm9EEq3J7vMVn5AFlce55g4BuXnPywZO09J6unWvFEynvlTTw/exec";
     const GAS_TOKEN = "";
     const TZ = "Asia/Jakarta";
 
@@ -401,7 +401,7 @@
         const ranged = scoped.filter(r => inRange(r, start, end));
 
         $('pic-name').textContent = rak === 'ALL' ? '🌐 Summary Keseluruhan Gudang' : (rak.split(' - ')[1] || rak);
-        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] \vert{}\vert{} rak);$('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
+        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] || rak);$('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
 
         $('total-inspeksi').textContent = scoped.length;
         const latest = sortDesc(scoped)[0];
@@ -472,7 +472,7 @@
         const pct = expected > 0 ? Math.min(100, Math.round((actualDays / expected) * 100)) : 0;
         const remainder = Math.max(0, 100 - pct);
 
-        $('compliance-badge').textContent = pct + '\%';$('compliance-desc').textContent = `Tercapai ${actualDays} dari ${expected} hari kerja`;
+        $('compliance-badge').textContent = pct + '%';$('compliance-desc').textContent = `Tercapai ${actualDays} dari ${expected} hari kerja`;
 
         const ctx = $('complianceChart').getContext('2d');
         if (complianceChart) {
@@ -577,7 +577,7 @@
 
     function openModal({ title, sub, cols, body, wide }) {
         $('modal-title').textContent = title;
-        $('modal-sub').textContent = sub \vert{}\vert{} '';$('modal-box').className = `bg-white rounded-2xl w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'} max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`;
+        $('modal-sub').textContent = sub || '';$('modal-box').className = `bg-white rounded-2xl w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'} max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`;
         $('modal-head').innerHTML = cols.map((c, i) => `<th class="p-3 ${i === 0 ? 'pl-6' : ''} font-semibold">${c}</th>`).join('');
         $('modal-body').innerHTML = body;
         $('modal').classList.remove('hidden');$('modal-close').focus();
