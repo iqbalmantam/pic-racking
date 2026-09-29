@@ -79,7 +79,7 @@
                 <h3 id="count-all-defects" class="text-3xl font-extrabold text-red-600">0</h3>
                 <span id="label-bulan-berjalan" class="text-xs text-red-600/80 font-medium">Periode</span>
             </div>
-            <p id="count-temuan-total" class="text-[11px] text-slate-400 mt-1">0 temuan pada grafik</p>
+            <p id="count-temuan-total" class="text-[11px] text-slate-400 mt-1">0 temuan pada grafik (1 inspeksi bisa >1 temuan)</p>
         </div>
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Sinkronisasi</p>
@@ -111,6 +111,7 @@
 
     <!-- Grid Grafik -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <!-- Grafik Temuan (2 Kolom) -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col justify-between">
             <div>
                 <div class="flex justify-between items-start mb-1">
@@ -122,13 +123,14 @@
             <div class="relative h-64 w-full"><canvas id="defectChart"></canvas></div>
         </div>
 
+        <!-- Grafik Persentase Bulan Berjalan (1 Kolom) -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
             <div>
                 <div class="flex justify-between items-start mb-1">
                     <h2 class="text-base font-bold text-slate-800">Capaian Kepatuhan</h2>
                     <span id="compliance-badge" class="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded">0%</span>
                 </div>
-                <p class="text-xs text-slate-400 mb-2">Persentase rak yang sudah diinspeksi</p>
+                <p class="text-xs text-slate-400 mb-2">Persentase hari terlapor vs hari kerja (Bulan Berjalan)</p>
             </div>
             <div class="relative h-52 w-full flex items-center justify-center my-2">
                 <canvas id="complianceChart"></canvas>
@@ -155,7 +157,7 @@
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
         <div class="p-6 border-b border-slate-100">
             <h2 class="text-base font-bold text-slate-800">🏆 Leaderboard Kepatuhan PIC (Audit Compliance)</h2>
-            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporannya.</p>
+            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporannya. Keaktifan = jumlah hari kerja (Senin–Sabtu) yang sudah ada laporan ÷ total hari kerja pada rentang terpilih. Urutan: hari terlapor terbanyak, lalu jumlah laporan.</p>
             <p id="leaderboard-summary" class="text-xs font-semibold text-red-600 mt-1"></p>
         </div>
         <div id="leaderboard-scroll" class="overflow-auto max-h-[420px]">
@@ -224,7 +226,7 @@
 </div>
 
 <script>
-    const DATA_URL = "data.json";
+    const DATA_URL = "data.json";   // dibuat otomatis oleh GitHub Actions (scripts/build_data.py)
     const TZ = "Asia/Jakarta";
 
     const $ = id => document.getElementById(id);
@@ -258,9 +260,9 @@
 
     const YES = ['ya', 'true', 'yes', 'y'], NO = ['tidak', 'false', 'no', 'n'];
     const DEFECTS = [
-        { label: 'Pallet Rusak',   test: r => YES.includes(norm(r.pallet)) },
+        { label: 'Pallet Rusak',    test: r => YES.includes(norm(r.pallet)) },
         { label: 'Segel Tidak Baik', test: r => NO.includes(norm(r.segel)) },
-        { label: 'Produk Penyok',   test: r => YES.includes(norm(r.penyok)) },
+        { label: 'Produk Penyok',    test: r => YES.includes(norm(r.penyok)) },
         { label: 'Label Tidak Baik', test: r => NO.includes(norm(r.label)) }
     ];
     const issuesOf = r => DEFECTS.filter(d => d.test(r)).map(d => d.label);
@@ -291,7 +293,7 @@
     async function fetchData(sync) {
         const t = sync ? Date.now() : Math.floor(Date.now() / 60000);
         const res = await fetch(DATA_URL + '?t=' + t, sync ? { cache: 'no-store' } : undefined);
-        if (!res.ok) throw new Error('HTTP ' + res.status + ' (data.json belum ada?)');
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' (data.json belum ada? jalankan workflow di tab Actions)');
         return res.json();
     }
 
@@ -326,9 +328,9 @@
             processMasterData(await fetchData(false));
             hideMsg();
         } catch (err) {
-            console.error('Gagal mengambil data:', err);
+            console.error('Gagal mengambil data dari GAS:', err);
             setBadge('⚠ Gagal memuat', 'bg-red-50 text-red-600');
-            showMsg('Gagal memuat data (' + err.message + ').', 'err', false);
+            showMsg('Gagal memuat data Master Database (' + err.message + ').', 'err', false);
         }
         refresh();
         checkUncheckedRaks();
@@ -345,11 +347,11 @@
             processMasterData(data);
             refresh();
             checkUncheckedRaks();
-            showMsg('Berhasil! Data telah disinkronkan.', 'ok');
+            showMsg(rows.length ? 'Berhasil! Data & daftar PIC telah disinkronkan.' : 'Sinkronisasi selesai, namun data kosong.', rows.length ? 'ok' : 'info');
         } catch (err) {
             console.error('Gagal sinkronisasi:', err);
             setBadge('⚠ Sinkron gagal', 'bg-red-50 text-red-600');
-            showMsg('Gagal melakukan sinkronisasi (' + err.message + ').', 'err');
+            showMsg('Gagal melakukan sinkronisasi data (' + err.message + ').', 'err');
         } finally {
             btn.innerHTML = original;
             btn.disabled = false;
@@ -414,7 +416,7 @@
         const defects = ranged.map(r => ({ r, issues: issuesOf(r) })).filter(x => x.issues.length);
         state = { ranged, defects, scoped };
         $('count-all-defects').textContent = defects.length;
-        $('count-temuan-total').textContent = `${counts.reduce((a, b) => a + b, 0)} temuan pada grafik`;
+        $('count-temuan-total').textContent = `${counts.reduce((a, b) => a + b, 0)} temuan pada grafik (1 inspeksi bisa >1 temuan)`;
 
         renderChart(counts);
         renderComplianceChart(start, end, rak);
@@ -443,16 +445,30 @@
     }
 
     const isSunday = ymd => new Date(ymd + 'T00:00:00Z').getUTCDay() === 0;
+    function expectedReports(start, end) {
+        const today = toYMD(new Date());
+        const dates = rows.map(r => r.ymd).filter(Boolean).sort();
+        const s = start || (dates.length ? dates[0] : today);
+        let e = end || today;
+        if (e > today) e = today;
+        if (!s || s > e) return 0;
+        let workdays = 0;
+        for (let d = s; d <= e; d = addDays(d, 1)) if (!isSunday(d)) workdays++;
+        return workdays;
+    }
 
     function renderComplianceChart(start, end, rak) {
-        const targetRaks = rak === 'ALL' ? rakNames : [rak];
-        const checkedRaks = new Set(rows.filter(r => targetRaks.includes(r.rak) && inRange(r, start, end)).map(r => r.rak));
-        const totalRaks = targetRaks.length;
-        const doneRaksCount = checkedRaks.size;
-        const pct = totalRaks > 0 ? Math.min(100, Math.round((doneRaksCount / totalRaks) * 100)) : 0;
+        const expected = expectedReports(start, end);
+        const scopedRows = rows.filter(r => (rak === 'ALL' || r.rak === rak) && inRange(r, start, end));
+        const daysDoneSet = new Set();
+        scopedRows.forEach(r => {
+            if (r.ymd && !isSunday(r.ymd)) daysDoneSet.add(r.ymd);
+        });
+        const actualDays = daysDoneSet.size;
+        const pct = expected > 0 ? Math.min(100, Math.round((actualDays / expected) * 100)) : 0;
         const remainder = Math.max(0, 100 - pct);
 
-        $('compliance-badge').textContent = pct + '\%';$('compliance-desc').textContent = `${doneRaksCount} dari ${totalRaks} rak sudah diinspeksi`;
+        $('compliance-badge').textContent = pct + '\%';$('compliance-desc').textContent = `Tercapai ${actualDays} dari ${expected} hari kerja`;
 
         const ctx = $('complianceChart').getContext('2d');
         if (complianceChart) {
@@ -464,7 +480,7 @@
         complianceChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Sudah Dicek (%)', 'Belum Dicek (%)'],
+                labels: ['Tercapai (%)', 'Belum (%)'],
                 datasets: [{
                     data: [pct, remainder],
                     backgroundColor: ['#10b981', '#f1f5f9'],
@@ -480,25 +496,13 @@
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                return context.dataIndex === 0 ? ` Sudah Dicek: ${pct}%` : ` Belum Dicek: ${remainder}%`;
+                                return context.dataIndex === 0 ? ` Capaian: ${pct}%` : ` Sisa: ${remainder}%`;
                             }
                         }
                     }
                 }
             }
         });
-    }
-
-    function expectedReports(start, end) {
-        const today = toYMD(new Date());
-        const dates = rows.map(r => r.ymd).filter(Boolean).sort();
-        const s = start || (dates.length ? dates[0] : today);
-        let e = end || today;
-        if (e > today) e = today;
-        if (!s || s > e) return 0;
-        let workdays = 0;
-        for (let d = s; d <= e; d = addDays(d, 1)) if (!isSunday(d)) workdays++;
-        return workdays;
     }
 
     function renderLeaderboard(start, end) {
