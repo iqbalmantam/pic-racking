@@ -109,7 +109,7 @@
         </div>
     </div>
 
-    <!-- Grid Grafik (Komparasi Temuan & Grafik Persentase Bulan Berjalan) -->
+    <!-- Grid Grafik -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col justify-between">
             <div>
@@ -291,7 +291,6 @@
         return isNaN(d) ? null : toYMD(d);
     }
 
-    // Parser CSV sederhana yang aman untuk teks ber-kutip
     function parseCSV(text) {
         let lines = [];
         let row = [""];
@@ -317,9 +316,9 @@
 
     const YES = ['ya', 'true', 'yes', 'y'], NO = ['tidak', 'false', 'no', 'n'];
     const DEFECTS = [
-        { label: 'Pallet Rusak',    test: r => YES.includes(norm(r.pallet)) },
+        { label: 'Pallet Rusak', test: r => YES.includes(norm(r.pallet)) },
         { label: 'Segel Tidak Baik', test: r => NO.includes(norm(r.segel)) },
-        { label: 'Produk Penyok',    test: r => YES.includes(norm(r.penyok)) },
+        { label: 'Produk Penyok', test: r => YES.includes(norm(r.penyok)) },
         { label: 'Label Tidak Baik', test: r => NO.includes(norm(r.label)) }
     ];
     const issuesOf = r => DEFECTS.filter(d => d.test(r)).map(d => d.label);
@@ -347,12 +346,10 @@
         b.className = `text-xs font-medium px-2 py-0.5 rounded-full ${cls}`;
     }
 
-    // Mengambil data dari seluruh spreadsheet PIC secara paralel
     async function fetchAllSheets() {
         let allRows = [];
         let promises = SHEET_SOURCES.map(async source => {
             try {
-                // Menggunakan AllOrigins proxy agar tidak terkena CORS policy browser
                 const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(source.url)}`;
                 const res = await fetch(proxyUrl);
                 if (!res.ok) return;
@@ -360,7 +357,6 @@
                 if (!json.contents) return;
 
                 const parsed = parseCSV(json.contents);
-                // Lewati baris header (baris ke-0), ambil data sisanya
                 for (let i = 1; i < parsed.length; i++) {
                     const r = parsed[i];
                     if (r && r.length >= 8 && r[2]) {
