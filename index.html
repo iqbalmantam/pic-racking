@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Monitoring & Audit Racking Gudang</title>
-    <!-- Tailwind CSS (play CDN: cukup untuk pemakaian internal) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js (versi dipin) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         .modal-body-scroll { max-height: 60vh; overflow-y: auto; }
@@ -26,7 +24,7 @@
 
 <div class="max-w-7xl mx-auto px-4 py-8">
 
-    <!-- Banner pesan (loading / sukses / error) -->
+    <!-- Banner pesan -->
     <div id="msg" class="no-print hidden mb-4 px-4 py-3 rounded-xl text-sm font-medium" role="status"></div>
 
     <!-- Header -->
@@ -43,9 +41,9 @@
 
         <div class="flex flex-col md:flex-row items-start md:items-center gap-3 w-full md:w-auto">
             <div class="flex items-center gap-2 no-print flex-wrap">
-                <button onclick="syncData()" id="sync-btn" title="Muat ulang data terbaru (data diperbarui otomatis tiap 15 menit)" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🔄 Sinkronkan Data</button>
-                <button onclick="exportToCSV()" title="Unduh data sesuai filter aktif (CSV, bisa dibuka di Excel)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">📥 Unduh CSV</button>
-                <button onclick="window.print()" title="Cetak / Simpan PDF" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🖨️ Cetak PDF</button>
+                <button onclick="syncData()" id="sync-btn" title="Muat ulang data terbaru" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🔄 Sinkronkan Data</button>
+                <button onclick="exportToCSV()" title="Unduh CSV" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">📥 Unduh CSV</button>
+                <button onclick="window.print()" title="Cetak PDF" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🖨️ Cetak PDF</button>
             </div>
             <div class="w-full md:w-auto flex flex-col gap-1 no-print">
                 <label for="rakSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rak & PIC:</label>
@@ -109,7 +107,7 @@
         </div>
     </div>
 
-    <!-- Grid Grafik (Komparasi Temuan & Grafik Persentase Bulan Berjalan) -->
+    <!-- Grid Grafik -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <!-- Grafik Temuan (2 Kolom) -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col justify-between">
@@ -123,7 +121,7 @@
             <div class="relative h-64 w-full"><canvas id="defectChart"></canvas></div>
         </div>
 
-        <!-- Grafik Persentase Bulan Berjalan (1 Kolom) -->
+        <!-- Grafik Persentase Capaian Kepatuhan (1 Kolom) -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
             <div>
                 <div class="flex justify-between items-start mb-1">
@@ -157,7 +155,7 @@
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
         <div class="p-6 border-b border-slate-100">
             <h2 class="text-base font-bold text-slate-800">🏆 Leaderboard Kepatuhan PIC (Audit Compliance)</h2>
-            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporannya. Keaktifan = jumlah hari kerja (Senin–Sabtu) yang sudah ada laporan ÷ total hari kerja pada rentang terpilih. Urutan: hari terlapor terbanyak, lalu jumlah laporan.</p>
+            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporannya. Keaktifan = jumlah hari kerja (Senin–Sabtu) yang sudah ada laporan ÷ total hari kerja pada rentang terpilih.</p>
             <p id="leaderboard-summary" class="text-xs font-semibold text-red-600 mt-1"></p>
         </div>
         <div id="leaderboard-scroll" class="overflow-auto max-h-[420px]">
@@ -226,7 +224,7 @@
 </div>
 
 <script>
-    const DATA_URL = "data.json";   // dibuat otomatis oleh GitHub Actions (scripts/build_data.py)
+    const DATA_URL = "data.json";   
     const TZ = "Asia/Jakarta";
 
     const $ = id => document.getElementById(id);
@@ -291,10 +289,9 @@
     }
 
     async function fetchData(sync) {
-        // Muat biasa: cache per menit. Tombol Sinkronkan: selalu ambil ulang.
         const t = sync ? Date.now() : Math.floor(Date.now() / 60000);
         const res = await fetch(DATA_URL + '?t=' + t, sync ? { cache: 'no-store' } : undefined);
-        if (!res.ok) throw new Error('HTTP ' + res.status + ' (data.json belum ada? jalankan workflow di tab Actions)');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
     }
 
@@ -348,7 +345,7 @@
             processMasterData(data);
             refresh();
             checkUncheckedRaks();
-            showMsg(rows.length ? 'Berhasil! Data & daftar PIC telah disinkronkan.' : 'Sinkronisasi selesai, namun data kosong.', rows.length ? 'ok' : 'info');
+            showMsg(rows.length ? 'Berhasil! Data telah disinkronkan.' : 'Sinkronisasi selesai.', 'ok');
         } catch (err) {
             console.error('Gagal sinkronisasi:', err);
             setBadge('⚠ Sinkron gagal', 'bg-red-50 text-red-600');
@@ -398,7 +395,7 @@
         const ranged = scoped.filter(r => inRange(r, start, end));
 
         $('pic-name').textContent = rak === 'ALL' ? '🌐 Summary Keseluruhan Gudang' : (rak.split(' - ')[1] || rak);
-        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] || rak);$('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
+        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] \vert{}\vert{} rak);$('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
 
         $('total-inspeksi').textContent = scoped.length;
         const latest = sortDesc(scoped)[0];
@@ -446,6 +443,7 @@
     }
 
     const isSunday = ymd => new Date(ymd + 'T00:00:00Z').getUTCDay() === 0;
+    
     function expectedReports(start, end) {
         const today = toYMD(new Date());
         const dates = rows.map(r => r.ymd).filter(Boolean).sort();
@@ -497,52 +495,6 @@
                         callbacks: {
                             label: function(context) {
                                 return context.dataIndex === 0 ? ` Sudah Dicek: ${pct}%` : ` Belum Dicek: ${remainder}%`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-        const expected = expectedReports(start, end);
-        const scopedRows = rows.filter(r => (rak === 'ALL' || r.rak === rak) && inRange(r, start, end));
-        const daysDoneSet = new Set();
-        scopedRows.forEach(r => {
-            if (r.ymd && !isSunday(r.ymd)) daysDoneSet.add(r.ymd);
-        });
-        const actualDays = daysDoneSet.size;
-        const pct = expected > 0 ? Math.min(100, Math.round((actualDays / expected) * 100)) : 0;
-        const remainder = Math.max(0, 100 - pct);
-
-        $('compliance-badge').textContent = pct + '%';$('compliance-desc').textContent = `Tercapai ${actualDays} dari ${expected} hari kerja`;
-
-        const ctx = $('complianceChart').getContext('2d');
-        if (complianceChart) {
-            complianceChart.data.datasets[0].data = [pct, remainder];
-            complianceChart.update();
-            return;
-        }
-
-        complianceChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Tercapai (%)', 'Belum (%)'],
-                datasets: [{
-                    data: [pct, remainder],
-                    backgroundColor: ['#10b981', '#f1f5f9'],
-                    borderWidth: 0,
-                    cutout: '75%'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataIndex === 0 ? ` Capaian: ${pct}%` : ` Sisa: ${remainder}%`;
                             }
                         }
                     }
@@ -614,12 +566,12 @@
         box.innerHTML = unchecked.length === 0
             ? `<div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-medium">Luar biasa! Semua area sudah diinspeksi pada tanggal ini.</div>`
             : `<p class="text-xs font-bold text-red-600 mb-2">Total Area Belum di Inspeksi (${unchecked.length}):</p>
-               <ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">${unchecked.map(n => `<li><span class="font-semibold text-slate-900">${esc(n)}</span></li>`).join('')}</ul>`;
+                <ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">${unchecked.map(n => `<li><span class="font-semibold text-slate-900">${esc(n)}</span></li>`).join('')}</ul>`;
     }
 
     function openModal({ title, sub, cols, body, wide }) {
         $('modal-title').textContent = title;
-        $('modal-sub').textContent = sub || '';$('modal-box').className = `bg-white rounded-2xl w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'} max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`;
+        $('modal-sub').textContent = sub \vert{}\vert{} '';$('modal-box').className = `bg-white rounded-2xl w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'} max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`;
         $('modal-head').innerHTML = cols.map((c, i) => `<th class="p-3 ${i === 0 ? 'pl-6' : ''} font-semibold">${c}</th>`).join('');
         $('modal-body').innerHTML = body;
         $('modal').classList.remove('hidden');$('modal-close').focus();
