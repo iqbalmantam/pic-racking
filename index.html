@@ -128,7 +128,7 @@
             <div>
                 <div class="flex justify-between items-start mb-1">
                     <h2 class="text-base font-bold text-slate-800">Capaian Kepatuhan</h2>
-                    <span id="compliance-badge" class="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded">0%</span>
+                    <span class="flex items-center gap-2"><span class="no-print text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded">Klik Batang untuk Detail</span><span id="compliance-badge" class="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded">0%</span></span>
                 </div>
                 <p id="compliance-sub" class="text-xs text-slate-400 mb-2">Persentase rak yang sudah dicek</p>
             </div>
@@ -458,6 +458,7 @@
         return workdays;
     }
 
+    let complianceCtx = { dates: [], rak: 'ALL' };
     function renderComplianceChart(start, end, rak) {
         // Persentase rak yang dicek di tiap tanggal (Senin-Sabtu). Tanpa filter tanggal = bulan berjalan.
         const today = toYMD(new Date());
@@ -487,6 +488,7 @@
             ? `${dates[0]} s/d ${dates[dates.length - 1]} • ${dates.length} hari kerja`
             : 'Belum ada hari kerja pada rentang ini';
 
+        complianceCtx = { dates, rak };
         const labels = dates.map(d => d.slice(8));
         if (complianceChart) {
             complianceChart.destroy();
@@ -497,6 +499,8 @@
             data: { labels, datasets: [{ data: pcts, backgroundColor: colors, borderRadius: 3, maxBarThickness: 18 }] },
             options: {
                 responsive: true, maintainAspectRatio: false,
+                onClick: (ev, els) => { if (els.length) showComplianceDetail(complianceCtx.dates[els[0].index]); },
+                onHover: (ev, els) => { if (ev.native) ev.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
                 scales: {
                     y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' }, ticks: { callback: v => v + '%', stepSize: 25 } },
                     x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0, font: { size: 10 } } }
@@ -631,6 +635,30 @@
             title: `Detail Riwayat: ${d.label}`, sub: 'Daftar inspeksi kategori ini pada rak & rentang tanggal terpilih',
             cols: ['Rak / PIC', 'Tanggal', 'Shift', 'Status Keterangan'],
             body: list.length ? defectRows(list) : emptyRow(4, 'Tidak ada riwayat temuan untuk kategori ini pada rentang tanggal tersebut.')
+        });
+    }
+
+    function showComplianceDetail(date) {
+        const { rak } = complianceCtx;
+        const names = rak === 'ALL' ? rakNames : [rak];
+        const dayRows = rows.filter(r => r.ymd === date && names.includes(r.rak));
+        const items = names.map(n => ({ n, list: dayRows.filter(r => r.rak === n) }));
+        const done = items.filter(x => x.list.length).length;
+        items.sort((a, b) => (a.list.length ? 1 : 0) - (b.list.length ? 1 : 0) || a.n.localeCompare(b.n));
+        const body = items.map(x => {
+            const status = x.list.length
+                ? '<span class="bg-emerald-50 text-emerald-600 text-xs px-2 py-0.5 rounded font-semibold">✔ Sudah dicek</span>'
+                : '<span class="bg-red-50 text-red-600 text-xs px-2 py-0.5 rounded font-semibold">✖ Belum dicek</span>';
+            const shifts = x.list.length ? [...new Set(x.list.map(r => disp(r.shift)))].join(', ') : '-';
+            const issues = [...new Set(x.list.flatMap(r => issuesOf(r)))];
+            const temuan = !x.list.length ? '-' : issues.length ? `<span class="text-red-600 font-semibold">${esc(issues.join(', '))}</span>` : '<span class="text-emerald-600">Sesuai standar</span>';
+            return `<tr class="hover:bg-slate-50 transition"><td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(x.n)}</td><td class="p-3">${status}</td><td class="p-3 text-xs">${esc(shifts)}</td><td class="p-3 pr-6 text-xs">${temuan}</td></tr>`;
+        }).join('');
+        const pct = names.length ? Math.round(done / names.length * 100) : 0;
+        openModal({
+            title: `Detail Pengecekan: ${date}`,
+            sub: `${done} dari ${names.length} rak sudah dicek (${pct}%) — yang belum dicek ditampilkan paling atas`,
+            cols: ['Rak / PIC', 'Status', 'Shift', 'Temuan'], wide: true, body
         });
     }
 
