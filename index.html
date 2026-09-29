@@ -112,7 +112,7 @@
     <!-- Grid Grafik (Komparasi Temuan & Grafik Persentase Bulan Berjalan) -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <!-- Grafik Temuan (2 Kolom) -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col justify-between">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-3 flex flex-col justify-between">
             <div>
                 <div class="flex justify-between items-start mb-1">
                     <h2 class="text-base font-bold text-slate-800">Komparasi Jenis Temuan Masalah</h2>
@@ -123,8 +123,8 @@
             <div class="relative h-64 w-full"><canvas id="defectChart"></canvas></div>
         </div>
 
-        <!-- Grafik Persentase Bulan Berjalan (1 Kolom) -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+        <!-- Grafik Persentase Bulan Berjalan (lebar penuh) -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-3 flex flex-col justify-between">
             <div>
                 <div class="flex justify-between items-start mb-1">
                     <h2 class="text-base font-bold text-slate-800">Capaian Kepatuhan</h2>
@@ -132,7 +132,7 @@
                 </div>
                 <p id="compliance-sub" class="text-xs text-slate-400 mb-2">Persentase rak yang sudah dicek</p>
             </div>
-            <div class="relative h-52 w-full flex items-center justify-center my-2">
+            <div class="relative h-72 w-full my-2">
                 <canvas id="complianceChart"></canvas>
             </div>
             <div id="compliance-desc" class="text-center text-xs text-slate-500 font-medium mt-1">Menghitung data...</div>
