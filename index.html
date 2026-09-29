@@ -79,7 +79,7 @@
                 <h3 id="count-all-defects" class="text-3xl font-extrabold text-red-600">0</h3>
                 <span id="label-bulan-berjalan" class="text-xs text-red-600/80 font-medium">Periode</span>
             </div>
-            <p id="count-temuan-total" class="text-[11px] text-slate-400 mt-1">0 temuan pada grafik (1 inspeksi bisa >1 temuan)</p>
+            <p id="count-temuan-total" class="text-[11px] text-slate-400 mt-1">0 temuan pada grafik</p>
         </div>
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Sinkronisasi</p>
@@ -109,7 +109,7 @@
         </div>
     </div>
 
-    <!-- Grid Grafik -->
+    <!-- Grid Grafik (Komparasi Temuan & Grafik Persentase Bulan Berjalan) -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <!-- Grafik Temuan (2 Kolom) -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col justify-between">
@@ -123,7 +123,7 @@
             <div class="relative h-64 w-full"><canvas id="defectChart"></canvas></div>
         </div>
 
-        <!-- Grafik Persentase Capaian Kepatuhan (1 Kolom) -->
+        <!-- Grafik Persentase Bulan Berjalan (1 Kolom) -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
             <div>
                 <div class="flex justify-between items-start mb-1">
@@ -226,7 +226,7 @@
 </div>
 
 <script>
-    const DATA_URL = "data.json";   // dibuat otomatis oleh GitHub Actions
+    const DATA_URL = "data.json";   // dibuat otomatis oleh GitHub Actions (scripts/build_data.py)
     const TZ = "Asia/Jakarta";
 
     const $ = id => document.getElementById(id);
@@ -291,9 +291,10 @@
     }
 
     async function fetchData(sync) {
+        // Muat biasa: cache per menit. Tombol Sinkronkan: selalu ambil ulang.
         const t = sync ? Date.now() : Math.floor(Date.now() / 60000);
         const res = await fetch(DATA_URL + '?t=' + t, sync ? { cache: 'no-store' } : undefined);
-        if (!res.ok) throw new Error('HTTP ' + res.status + ' (data.json belum ada?)');
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' (data.json belum ada? jalankan workflow di tab Actions)');
         return res.json();
     }
 
@@ -328,7 +329,7 @@
             processMasterData(await fetchData(false));
             hideMsg();
         } catch (err) {
-            console.error('Gagal mengambil data:', err);
+            console.error('Gagal mengambil data dari GAS:', err);
             setBadge('⚠ Gagal memuat', 'bg-red-50 text-red-600');
             showMsg('Gagal memuat data Master Database (' + err.message + ').', 'err', false);
         }
@@ -347,11 +348,11 @@
             processMasterData(data);
             refresh();
             checkUncheckedRaks();
-            showMsg(rows.length ? 'Berhasil! Data telah disinkronkan.' : 'Sinkronisasi selesai.', 'ok');
+            showMsg(rows.length ? 'Berhasil! Data & daftar PIC telah disinkronkan.' : 'Sinkronisasi selesai, namun data kosong.', rows.length ? 'ok' : 'info');
         } catch (err) {
             console.error('Gagal sinkronisasi:', err);
             setBadge('⚠ Sinkron gagal', 'bg-red-50 text-red-600');
-            showMsg('Gagal melakukan sinkronisasi (' + err.message + ').', 'err');
+            showMsg('Gagal melakukan sinkronisasi data (' + err.message + ').', 'err');
         } finally {
             btn.innerHTML = original;
             btn.disabled = false;
@@ -397,7 +398,7 @@
         const ranged = scoped.filter(r => inRange(r, start, end));
 
         $('pic-name').textContent = rak === 'ALL' ? '🌐 Summary Keseluruhan Gudang' : (rak.split(' - ')[1] || rak);
-        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] \vert{}\vert{} rak);$('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
+        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] || rak);$('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
 
         $('total-inspeksi').textContent = scoped.length;
         const latest = sortDesc(scoped)[0];
@@ -445,8 +446,6 @@
     }
 
     const isSunday = ymd => new Date(ymd + 'T00:00:00Z').getUTCDay() === 0;
-    
-    // Fungsi khusus untuk Leaderboard (menghitung hari kerja aktif)
     function expectedReports(start, end) {
         const today = toYMD(new Date());
         const dates = rows.map(r => r.ymd).filter(Boolean).sort();
@@ -459,18 +458,13 @@
         return workdays;
     }
 
-    // Fungsi Grafik Donat (Menghitung Rak yang sudah diinspeksi vs Total Rak)
     function renderComplianceChart(start, end, rak) {
-        // Tentukan jumlah total rak yang dipantau
         const targetRaks = rak === 'ALL' ? rakNames : [rak];
         const totalRaks = targetRaks.length;
-
-        // Hitung berapa rak unik yang sudah mengirim inspeksi di rentang tanggal tersebut
         const checkedRaks = new Set(
             rows.filter(r => targetRaks.includes(r.rak) && inRange(r, start, end)).map(r => r.rak)
         );
         const doneRaksCount = checkedRaks.size;
-
         const pct = totalRaks > 0 ? Math.min(100, Math.round((doneRaksCount / totalRaks) * 100)) : 0;
         const remainder = Math.max(0, 100 - pct);
 
@@ -510,8 +504,53 @@
             }
         });
     }
+        const expected = expectedReports(start, end);
+        const scopedRows = rows.filter(r => (rak === 'ALL' || r.rak === rak) && inRange(r, start, end));
+        const daysDoneSet = new Set();
+        scopedRows.forEach(r => {
+            if (r.ymd && !isSunday(r.ymd)) daysDoneSet.add(r.ymd);
+        });
+        const actualDays = daysDoneSet.size;
+        const pct = expected > 0 ? Math.min(100, Math.round((actualDays / expected) * 100)) : 0;
+        const remainder = Math.max(0, 100 - pct);
 
-    // Fungsi Leaderboard (Menghitung tingkat keaktifan PIC / jumlah hari pelaporan)
+        $('compliance-badge').textContent = pct + '%';$('compliance-desc').textContent = `Tercapai ${actualDays} dari ${expected} hari kerja`;
+
+        const ctx = $('complianceChart').getContext('2d');
+        if (complianceChart) {
+            complianceChart.data.datasets[0].data = [pct, remainder];
+            complianceChart.update();
+            return;
+        }
+
+        complianceChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Tercapai (%)', 'Belum (%)'],
+                datasets: [{
+                    data: [pct, remainder],
+                    backgroundColor: ['#10b981', '#f1f5f9'],
+                    borderWidth: 0,
+                    cutout: '75%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataIndex === 0 ? ` Capaian: ${pct}%` : ` Sisa: ${remainder}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     function renderLeaderboard(start, end) {
         const counts = Object.fromEntries(rakNames.map(n => [n, 0]));
         const daysDone = Object.fromEntries(rakNames.map(n => [n, new Set()]));
@@ -575,12 +614,12 @@
         box.innerHTML = unchecked.length === 0
             ? `<div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-medium">Luar biasa! Semua area sudah diinspeksi pada tanggal ini.</div>`
             : `<p class="text-xs font-bold text-red-600 mb-2">Total Area Belum di Inspeksi (${unchecked.length}):</p>
-                <ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">${unchecked.map(n => `<li><span class="font-semibold text-slate-900">${esc(n)}</span></li>`).join('')}</ul>`;
+               <ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">${unchecked.map(n => `<li><span class="font-semibold text-slate-900">${esc(n)}</span></li>`).join('')}</ul>`;
     }
 
     function openModal({ title, sub, cols, body, wide }) {
         $('modal-title').textContent = title;
-        $('modal-sub').textContent = sub \vert{}\vert{} '';$('modal-box').className = `bg-white rounded-2xl w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'} max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`;
+        $('modal-sub').textContent = sub || '';$('modal-box').className = `bg-white rounded-2xl w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'} max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`;
         $('modal-head').innerHTML = cols.map((c, i) => `<th class="p-3 ${i === 0 ? 'pl-6' : ''} font-semibold">${c}</th>`).join('');
         $('modal-body').innerHTML = body;
         $('modal').classList.remove('hidden');$('modal-close').focus();
