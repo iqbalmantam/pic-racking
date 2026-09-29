@@ -1,655 +1,656 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Monitoring & Audit Racking Gudang</title>
-    <!-- Tailwind CSS (play CDN: cukup untuk pemakaian internal) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js (versi dipin) -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <style>
-        .modal-body-scroll { max-height: 60vh; overflow-y: auto; }
-        .print-only { display: none; }
-        #leaderboard-scroll thead th { position: sticky; top: 0; background: #f8fafc; z-index: 1; box-shadow: 0 1px 0 #e2e8f0; }
-        @media print {
-            #leaderboard-scroll { max-height: none !important; overflow: visible !important; }
-            body { background: white !important; }
-            .no-print, #modal { display: none !important; }
-            .print-only { display: block !important; }
-            .max-w-7xl { max-width: 100% !important; padding: 0 !important; }
-            div { box-shadow: none !important; }
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Monitoring & Audit Racking Gudang</title>
+    <!-- Tailwind CSS (play CDN: cukup untuk pemakaian internal) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js (versi dipin) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        .modal-body-scroll { max-height: 60vh; overflow-y: auto; }
+        .print-only { display: none; }
+        #leaderboard-scroll thead th { position: sticky; top: 0; background: #f8fafc; z-index: 1; box-shadow: 0 1px 0 #e2e8f0; }
+        @media print {
+            #leaderboard-scroll { max-height: none !important; overflow: visible !important; }
+            body { background: white !important; }
+            .no-print, #modal { display: none !important; }
+            .print-only { display: block !important; }
+            .max-w-7xl { max-width: 100% !important; padding: 0 !important; }
+            div { box-shadow: none !important; }
+        }
+    </style>
 </head>
 <body class="bg-slate-50 font-sans antialiased text-slate-800">
 
 <div class="max-w-7xl mx-auto px-4 py-8">
 
-    <!-- Banner pesan (loading / sukses / error) -->
-    <div id="msg" class="no-print hidden mb-4 px-4 py-3 rounded-xl text-sm font-medium" role="status"></div>
+    <!-- Banner pesan (loading / sukses / error) -->
+    <div id="msg" class="no-print hidden mb-4 px-4 py-3 rounded-xl text-sm font-medium" role="status"></div>
 
-    <!-- Header -->
-    <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
-        <div>
-            <div class="flex items-center gap-2">
-                <span class="bg-blue-50 text-blue-600 border border-blue-100 text-xs font-semibold px-2.5 py-0.5 rounded-full">Monitoring Operasional Gudang</span>
-                <span id="sync-badge" class="bg-slate-100 text-slate-500 text-xs font-medium px-2 py-0.5 rounded-full">⏳ Memuat…</span>
-            </div>
-            <h1 class="text-2xl font-bold text-slate-900 mt-1">Dashboard Monitoring Racking</h1>
-            <p class="text-sm text-slate-500">Status Tampilan: <span id="pic-name" class="font-semibold text-blue-600">🌐 Summary Keseluruhan Gudang</span></p>
-            <p id="print-range" class="print-only text-xs text-slate-600 mt-1"></p>
-        </div>
+    <!-- Header -->
+    <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="bg-blue-50 text-blue-600 border border-blue-100 text-xs font-semibold px-2.5 py-0.5 rounded-full">Monitoring Operasional Gudang</span>
+                <span id="sync-badge" class="bg-slate-100 text-slate-500 text-xs font-medium px-2 py-0.5 rounded-full">⏳ Memuat…</span>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-900 mt-1">Dashboard Monitoring Racking</h1>
+            <p class="text-sm text-slate-500">Status Tampilan: <span id="pic-name" class="font-semibold text-blue-600">🌐 Summary Keseluruhan Gudang</span></p>
+            <p id="print-range" class="print-only text-xs text-slate-600 mt-1"></p>
+        </div>
 
-        <div class="flex flex-col md:flex-row items-start md:items-center gap-3 w-full md:w-auto">
-            <div class="flex items-center gap-2 no-print flex-wrap">
-                <button onclick="syncData()" id="sync-btn" title="Muat ulang data terbaru (data diperbarui otomatis tiap 15 menit)" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🔄 Sinkronkan Data</button>
-                <button onclick="exportToCSV()" title="Unduh data sesuai filter aktif (CSV, bisa dibuka di Excel)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">📥 Unduh CSV</button>
-                <button onclick="window.print()" title="Cetak / Simpan PDF" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🖨️ Cetak PDF</button>
-            </div>
-            <div class="w-full md:w-auto flex flex-col gap-1 no-print">
-                <label for="rakSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rak & PIC:</label>
-                <select id="rakSelect" onchange="refresh()" class="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-blue-500 shadow-sm"></select>
-            </div>
-        </div>
-    </header>
+        <div class="flex flex-col md:flex-row items-start md:items-center gap-3 w-full md:w-auto">
+            <div class="flex items-center gap-2 no-print flex-wrap">
+                <button onclick="syncData()" id="sync-btn" title="Muat ulang data terbaru (data diperbarui otomatis tiap 15 menit)" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🔄 Sinkronkan Data</button>
+                <button onclick="exportToCSV()" title="Unduh data sesuai filter aktif (CSV, bisa dibuka di Excel)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">📥 Unduh CSV</button>
+                <button onclick="window.print()" title="Cetak / Simpan PDF" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🖨️ Cetak PDF</button>
+            </div>
+            <div class="w-full md:w-auto flex flex-col gap-1 no-print">
+                <label for="rakSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rak & PIC:</label>
+                <select id="rakSelect" onchange="refresh()" class="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-blue-500 shadow-sm"></select>
+            </div>
+        </div>
+    </header>
 
-    <!-- KPI -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Inspeksi</p>
-            <div class="flex items-baseline justify-between mt-2">
-                <h3 id="total-inspeksi" class="text-3xl font-extrabold text-slate-900">0</h3>
-                <span id="label-info-kpi" class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">Semua Rak</span>
-            </div>
-        </div>
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Inspeksi Terakhir Masuk</p>
-            <div class="flex items-baseline justify-between mt-2">
-                <h3 id="last-date" class="text-lg font-bold text-blue-600">-</h3>
-                <span id="last-shift" class="text-xs font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded">-</span>
-            </div>
-        </div>
-        <div onclick="openSemuaTemuanModal()" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-red-300 hover:shadow-md transition group flex flex-col justify-between">
-            <div class="flex justify-between items-center">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-red-600 transition">Inspeksi Bermasalah</p>
-                <span class="text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded font-bold no-print">Klik Detail</span>
-            </div>
-            <div class="flex items-baseline justify-between mt-2">
-                <h3 id="count-all-defects" class="text-3xl font-extrabold text-red-600">0</h3>
-                <span id="label-bulan-berjalan" class="text-xs text-red-600/80 font-medium">Periode</span>
-            </div>
-            <p id="count-temuan-total" class="text-[11px] text-slate-400 mt-1">0 temuan pada grafik (1 inspeksi bisa >1 temuan)</p>
-        </div>
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Sinkronisasi</p>
-            <div class="flex items-baseline justify-between mt-2">
-                <h3 id="sync-time" class="text-sm font-bold text-slate-500">Belum sinkron</h3>
-                <span id="rak-count" class="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded">0 rak</span>
-            </div>
-        </div>
-    </div>
+    <!-- KPI -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Inspeksi</p>
+            <div class="flex items-baseline justify-between mt-2">
+                <h3 id="total-inspeksi" class="text-3xl font-extrabold text-slate-900">0</h3>
+                <span id="label-info-kpi" class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">Semua Rak</span>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Inspeksi Terakhir Masuk</p>
+            <div class="flex items-baseline justify-between mt-2">
+                <h3 id="last-date" class="text-lg font-bold text-blue-600">-</h3>
+                <span id="last-shift" class="text-xs font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded">-</span>
+            </div>
+        </div>
+        <div onclick="openSemuaTemuanModal()" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-red-300 hover:shadow-md transition group flex flex-col justify-between">
+            <div class="flex justify-between items-center">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-red-600 transition">Inspeksi Bermasalah</p>
+                <span class="text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded font-bold no-print">Klik Detail</span>
+            </div>
+            <div class="flex items-baseline justify-between mt-2">
+                <h3 id="count-all-defects" class="text-3xl font-extrabold text-red-600">0</h3>
+                <span id="label-bulan-berjalan" class="text-xs text-red-600/80 font-medium">Periode</span>
+            </div>
+            <p id="count-temuan-total" class="text-[11px] text-slate-400 mt-1">0 temuan pada grafik</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Sinkronisasi</p>
+            <div class="flex items-baseline justify-between mt-2">
+                <h3 id="sync-time" class="text-sm font-bold text-slate-500">Belum sinkron</h3>
+                <span id="rak-count" class="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded">0 rak</span>
+            </div>
+        </div>
+    </div>
 
-    <!-- Filter tanggal -->
-    <div class="no-print bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
-        <div>
-            <h3 class="font-bold text-slate-800 text-sm">Filter Data Berdasarkan Tanggal</h3>
-            <p class="text-xs text-slate-500">Pilih rentang waktu untuk grafik dan analisis</p>
-        </div>
-        <div class="flex items-center gap-2 flex-wrap">
-            <button onclick="setQuickDate('7days')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">7 Hari Terakhir</button>
-            <button onclick="setQuickDate('thisMonth')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Bulan Ini</button>
-            <button onclick="resetDateFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Semua Data</button>
-            <div class="h-6 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
-            <div class="flex items-center gap-1.5">
-                <input type="date" id="startDate" onchange="refresh()" aria-label="Tanggal mulai" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
-                <span class="text-xs text-slate-400">s/d</span>
-                <input type="date" id="endDate" onchange="refresh()" aria-label="Tanggal akhir" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
-            </div>
-        </div>
-    </div>
+    <!-- Filter tanggal -->
+    <div class="no-print bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
+        <div>
+            <h3 class="font-bold text-slate-800 text-sm">Filter Data Berdasarkan Tanggal</h3>
+            <p class="text-xs text-slate-500">Pilih rentang waktu untuk grafik dan analisis</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <button onclick="setQuickDate('7days')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">7 Hari Terakhir</button>
+            <button onclick="setQuickDate('thisMonth')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Bulan Ini</button>
+            <button onclick="resetDateFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Semua Data</button>
+            <div class="h-6 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
+            <div class="flex items-center gap-1.5">
+                <input type="date" id="startDate" onchange="refresh()" aria-label="Tanggal mulai" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
+                <span class="text-xs text-slate-400">s/d</span>
+                <input type="date" id="endDate" onchange="refresh()" aria-label="Tanggal akhir" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
+            </div>
+        </div>
+    </div>
 
-    <!-- Grid Grafik -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <!-- Grafik Temuan (2 Kolom) -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col justify-between">
-            <div>
-                <div class="flex justify-between items-start mb-1">
-                    <h2 class="text-base font-bold text-slate-800">Komparasi Jenis Temuan Masalah</h2>
-                    <span class="no-print text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded">Klik Batang Grafik untuk Detail</span>
-                </div>
-                <p class="text-xs text-slate-400 mb-4">Akumulasi ketidaksesuaian standar pada rak & rentang tanggal terpilih</p>
-            </div>
-            <div class="relative h-64 w-full"><canvas id="defectChart"></canvas></div>
-        </div>
+    <!-- Grid Grafik (Komparasi Temuan & Grafik Persentase Bulan Berjalan) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <!-- Grafik Temuan (2 Kolom) -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-start mb-1">
+                    <h2 class="text-base font-bold text-slate-800">Komparasi Jenis Temuan Masalah</h2>
+                    <span class="no-print text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded">Klik Batang Grafik untuk Detail</span>
+                </div>
+                <p class="text-xs text-slate-400 mb-4">Akumulasi ketidaksesuaian standar pada rak & rentang tanggal terpilih</p>
+            </div>
+            <div class="relative h-64 w-full"><canvas id="defectChart"></canvas></div>
+        </div>
 
-        <!-- Grafik Persentase Bulan Berjalan (1 Kolom) -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-            <div>
-                <div class="flex justify-between items-start mb-1">
-                    <h2 class="text-base font-bold text-slate-800">Capaian Kepatuhan</h2>
-                    <span id="compliance-badge" class="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded">0%</span>
-                </div>
-                <p class="text-xs text-slate-400 mb-2">Persentase hari terlapor vs hari kerja (Bulan Berjalan)</p>
-            </div>
-            <div class="relative h-52 w-full flex items-center justify-center my-2">
-                <canvas id="complianceChart"></canvas>
-            </div>
-            <div id="compliance-desc" class="text-center text-xs text-slate-500 font-medium mt-1">Menghitung data...</div>
-        </div>
-    </div>
+        <!-- Grafik Persentase Bulan Berjalan (1 Kolom) -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-start mb-1">
+                    <h2 class="text-base font-bold text-slate-800">Capaian Kepatuhan</h2>
+                    <span id="compliance-badge" class="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded">0%</span>
+                </div>
+                <p class="text-xs text-slate-400 mb-2">Persentase hari terlapor vs hari kerja (Bulan Berjalan)</p>
+            </div>
+            <div class="relative h-52 w-full flex items-center justify-center my-2">
+                <canvas id="complianceChart"></canvas>
+            </div>
+            <div id="compliance-desc" class="text-center text-xs text-slate-500 font-medium mt-1">Menghitung data...</div>
+        </div>
+    </div>
 
-    <!-- Rak belum dicek -->
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 flex flex-col">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-            <div>
-                <h2 class="text-base font-bold text-slate-800">Summary: Rak Belum Dicek</h2>
-                <p class="text-xs text-slate-500">Daftar rak yang belum ada laporan pada tanggal tertentu</p>
-            </div>
-            <input type="date" id="checkDate" onchange="checkUncheckedRaks()" aria-label="Tanggal pengecekan" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500 font-semibold">
-        </div>
-        <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 text-sm text-slate-600 w-full">
-            <p class="text-center text-slate-400 italic py-4">Memuat status pemeriksaan...</p>
-        </div>
-    </div>
+    <!-- Rak belum dicek -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 flex flex-col">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+            <div>
+                <h2 class="text-base font-bold text-slate-800">Summary: Rak Belum Dicek</h2>
+                <p class="text-xs text-slate-500">Daftar rak yang belum ada laporan pada tanggal tertentu</p>
+            </div>
+            <input type="date" id="checkDate" onchange="checkUncheckedRaks()" aria-label="Tanggal pengecekan" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500 font-semibold">
+        </div>
+        <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 text-sm text-slate-600 w-full">
+            <p class="text-center text-slate-400 italic py-4">Memuat status pemeriksaan...</p>
+        </div>
+    </div>
 
-    <!-- Leaderboard -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
-        <div class="p-6 border-b border-slate-100">
-            <h2 class="text-base font-bold text-slate-800">🏆 Leaderboard Kepatuhan PIC (Audit Compliance)</h2>
-            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporannya. Keaktifan = jumlah hari kerja (Senin–Sabtu) yang sudah ada laporan ÷ total hari kerja pada rentang terpilih. Urutan: hari terlapor terbanyak, lalu jumlah laporan.</p>
-            <p id="leaderboard-summary" class="text-xs font-semibold text-red-600 mt-1"></p>
-        </div>
-        <div id="leaderboard-scroll" class="overflow-auto max-h-[420px]">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                        <th class="p-4 pl-6 font-semibold w-24 text-center">Rank</th>
-                        <th class="p-4 font-semibold">Rak / PIC</th>
-                        <th class="p-4 font-semibold text-center">Total Laporan Dikirim</th>
-                        <th class="p-4 font-semibold pr-6 text-center">Status Keaktifan</th>
-                    </tr>
-                </thead>
-                <tbody id="leaderboard-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
-            </table>
-        </div>
-    </div>
+    <!-- Leaderboard -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
+        <div class="p-6 border-b border-slate-100">
+            <h2 class="text-base font-bold text-slate-800">🏆 Leaderboard Kepatuhan PIC (Audit Compliance)</h2>
+            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporannya. Keaktifan = jumlah hari kerja (Senin–Sabtu) yang sudah ada laporan ÷ total hari kerja pada rentang terpilih. Urutan: hari terlapor terbanyak, lalu jumlah laporan.</p>
+            <p id="leaderboard-summary" class="text-xs font-semibold text-red-600 mt-1"></p>
+        </div>
+        <div id="leaderboard-scroll" class="overflow-auto max-h-[420px]">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                        <th class="p-4 pl-6 font-semibold w-24 text-center">Rank</th>
+                        <th class="p-4 font-semibold">Rak / PIC</th>
+                        <th class="p-4 font-semibold text-center">Total Laporan Dikirim</th>
+                        <th class="p-4 font-semibold pr-6 text-center">Status Keaktifan</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+            </table>
+        </div>
+    </div>
 
-    <!-- Riwayat terbaru -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-            <div>
-                <h2 class="text-base font-bold text-slate-800">Riwayat Inspeksi Terbaru</h2>
-                <p class="text-xs text-slate-500">Menampilkan 5 laporan pemeriksaan terbaru</p>
-            </div>
-            <button onclick="openSemuaRiwayatModal()" class="no-print bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg shadow-sm transition font-medium">Tampilkan Semua Data</button>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                        <th class="p-3 font-semibold">Rak / PIC</th>
-                        <th class="p-3 font-semibold">Tanggal</th>
-                        <th class="p-3 font-semibold">Shift</th>
-                        <th class="p-3 font-semibold text-center">Pallet Rusak</th>
-                        <th class="p-3 font-semibold text-center">Segel Baik</th>
-                        <th class="p-3 font-semibold text-center">Produk Penyok</th>
-                        <th class="p-3 font-semibold text-center">Label Baik</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
-            </table>
-        </div>
-    </div>
+    <!-- Riwayat terbaru -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+            <div>
+                <h2 class="text-base font-bold text-slate-800">Riwayat Inspeksi Terbaru</h2>
+                <p class="text-xs text-slate-500">Menampilkan 5 laporan pemeriksaan terbaru</p>
+            </div>
+            <button onclick="openSemuaRiwayatModal()" class="no-print bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg shadow-sm transition font-medium">Tampilkan Semua Data</button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                        <th class="p-3 font-semibold">Rak / PIC</th>
+                        <th class="p-3 font-semibold">Tanggal</th>
+                        <th class="p-3 font-semibold">Shift</th>
+                        <th class="p-3 font-semibold text-center">Pallet Rusak</th>
+                        <th class="p-3 font-semibold text-center">Segel Baik</th>
+                        <th class="p-3 font-semibold text-center">Produk Penyok</th>
+                        <th class="p-3 font-semibold text-center">Label Baik</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <!-- MODAL UMUM -->
 <div id="modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div id="modal-box" class="bg-white rounded-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-            <div>
-                <h3 id="modal-title" class="text-base font-bold text-slate-900"></h3>
-                <p id="modal-sub" class="text-xs text-slate-500"></p>
-            </div>
-            <button onclick="closeModal()" aria-label="Tutup" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
-        </div>
-        <div class="overflow-y-auto flex-1 modal-body-scroll">
-            <table class="w-full text-left border-collapse">
-                <thead class="sticky top-0 bg-white shadow-sm"><tr id="modal-head" class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider"></tr></thead>
-                <tbody id="modal-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
-            </table>
-        </div>
-        <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-            <button id="modal-close" onclick="closeModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
-        </div>
-    </div>
+    <div id="modal-box" class="bg-white rounded-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <div>
+                <h3 id="modal-title" class="text-base font-bold text-slate-900"></h3>
+                <p id="modal-sub" class="text-xs text-slate-500"></p>
+            </div>
+            <button onclick="closeModal()" aria-label="Tutup" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
+        </div>
+        <div class="overflow-y-auto flex-1 modal-body-scroll">
+            <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 bg-white shadow-sm"><tr id="modal-head" class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider"></tr></thead>
+                <tbody id="modal-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+            </table>
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+            <button id="modal-close" onclick="closeModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
+        </div>
+    </div>
 </div>
 
 <script>
-    const DATA_URL = "data.json";   // dibuat otomatis oleh GitHub Actions (scripts/build_data.py)
-    const TZ = "Asia/Jakarta";
+    const DATA_URL = "data.json";   // dibuat otomatis oleh GitHub Actions (scripts/build_data.py)
+    const TZ = "Asia/Jakarta";
 
-    const $ = id => document.getElementById(id);
-    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const norm = v => String(v ?? '').trim().toLowerCase();
-    const disp = v => (v === '' || v == null) ? '-' : v;
-    const ymdFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ });
-    const toYMD = d => ymdFmt.format(d);
-    const addDays = (ymd, n) => { const d = new Date(ymd + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-    const hhmm = d => d.toLocaleTimeString('id-ID', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const norm = v => String(v ?? '').trim().toLowerCase();
+    const disp = v => (v === '' || v == null) ? '-' : v;
+    const ymdFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ });
+    const toYMD = d => ymdFmt.format(d);
+    const addDays = (ymd, n) => { const d = new Date(ymd + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+    const hhmm = d => d.toLocaleTimeString('id-ID', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
 
-    function normalizeDate(raw) {
-        if (raw == null || raw === '') return null;
-        if (raw instanceof Date) return isNaN(raw) ? null : toYMD(raw);
-        const s = String(raw).trim();
-        if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
-            return /(Z|[+-]\d{2}:?\d{2})$/.test(s) ? toYMD(new Date(s)) : s.slice(0, 10);
-        }
-        const m = s.split(' ')[0].split(/[\/-]/);
-        if (m.length === 3 && m.every(x => /^\d+$/.test(x))) {
-            let [a, b, c] = m;
-            if (a.length === 4) return `${a}-${b.padStart(2, '0')}-${c.padStart(2, '0')}`;
-            const year = c.length === 2 ? '20' + c : c;
-            let day = a, month = b;
-            if (parseInt(b, 10) > 12) { month = a; day = b; }
-            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        }
-        const d = new Date(s);
-        return isNaN(d) ? null : toYMD(d);
-    }
+    function normalizeDate(raw) {
+        if (raw == null || raw === '') return null;
+        if (raw instanceof Date) return isNaN(raw) ? null : toYMD(raw);
+        const s = String(raw).trim();
+        if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+            return /(Z|[+-]\d{2}:?\d{2})$/.test(s) ? toYMD(new Date(s)) : s.slice(0, 10);
+        }
+        const m = s.split(' ')[0].split(/[\/-]/);
+        if (m.length === 3 && m.every(x => /^\d+$/.test(x))) {
+            let [a, b, c] = m;
+            if (a.length === 4) return `${a}-${b.padStart(2, '0')}-${c.padStart(2, '0')}`;
+            const year = c.length === 2 ? '20' + c : c;
+            let day = a, month = b;
+            if (parseInt(b, 10) > 12) { month = a; day = b; }
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        const d = new Date(s);
+        return isNaN(d) ? null : toYMD(d);
+    }
 
-    const YES = ['ya', 'true', 'yes', 'y'], NO = ['tidak', 'false', 'no', 'n'];
-    const DEFECTS = [
-        { label: 'Pallet Rusak',    test: r => YES.includes(norm(r.pallet)) },
-        { label: 'Segel Tidak Baik', test: r => NO.includes(norm(r.segel)) },
-        { label: 'Produk Penyok',    test: r => YES.includes(norm(r.penyok)) },
-        { label: 'Label Tidak Baik', test: r => NO.includes(norm(r.label)) }
-    ];
-    const issuesOf = r => DEFECTS.filter(d => d.test(r)).map(d => d.label);
+    const YES = ['ya', 'true', 'yes', 'y'], NO = ['tidak', 'false', 'no', 'n'];
+    const DEFECTS = [
+        { label: 'Pallet Rusak',    test: r => YES.includes(norm(r.pallet)) },
+        { label: 'Segel Tidak Baik', test: r => NO.includes(norm(r.segel)) },
+        { label: 'Produk Penyok',    test: r => YES.includes(norm(r.penyok)) },
+        { label: 'Label Tidak Baik', test: r => NO.includes(norm(r.label)) }
+    ];
+    const issuesOf = r => DEFECTS.filter(d => d.test(r)).map(d => d.label);
 
-    let rows = [];
-    let rakNames = [];
-    let chart = null;
-    let complianceChart = null;
-    let state = { ranged: [], defects: [], scoped: [] };
+    let rows = [];
+    let rakNames = [];
+    let chart = null;
+    let complianceChart = null;
+    let state = { ranged: [], defects: [], scoped: [] };
 
-    let msgTimer;
-    function showMsg(text, type = 'info', auto = true) {
-        const el = $('msg');
-        const cls = { info: 'bg-blue-50 text-blue-700', ok: 'bg-emerald-50 text-emerald-700', err: 'bg-red-50 text-red-700' }[type];
-        el.className = `no-print mb-4 px-4 py-3 rounded-xl text-sm font-medium ${cls}`;
-        el.textContent = text;
-        clearTimeout(msgTimer);
-        if (auto) msgTimer = setTimeout(() => el.classList.add('hidden'), 4000);
-    }
-    const hideMsg = () => $('msg').classList.add('hidden');
+    let msgTimer;
+    function showMsg(text, type = 'info', auto = true) {
+        const el = $('msg');
+        const cls = { info: 'bg-blue-50 text-blue-700', ok: 'bg-emerald-50 text-emerald-700', err: 'bg-red-50 text-red-700' }[type];
+        el.className = `no-print mb-4 px-4 py-3 rounded-xl text-sm font-medium ${cls}`;
+        el.textContent = text;
+        clearTimeout(msgTimer);
+        if (auto) msgTimer = setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+    const hideMsg = () => $('msg').classList.add('hidden');
 
-    function setBadge(text, cls) {
-        const b = $('sync-badge');
-        b.textContent = text;
-        b.className = `text-xs font-medium px-2 py-0.5 rounded-full ${cls}`;
-    }
+    function setBadge(text, cls) {
+        const b = $('sync-badge');
+        b.textContent = text;
+        b.className = `text-xs font-medium px-2 py-0.5 rounded-full ${cls}`;
+    }
 
-    async function fetchData(sync) {
-        const t = sync ? Date.now() : Math.floor(Date.now() / 60000);
-        const res = await fetch(DATA_URL + '?t=' + t, sync ? { cache: 'no-store' } : undefined);
-        if (!res.ok) throw new Error('HTTP ' + res.status + ' (data.json belum ada? jalankan workflow di tab Actions)');
-        return res.json();
-    }
+    async function fetchData(sync) {
+        // Muat biasa: cache per menit. Tombol Sinkronkan: selalu ambil ulang.
+        const t = sync ? Date.now() : Math.floor(Date.now() / 60000);
+        const res = await fetch(DATA_URL + '?t=' + t, sync ? { cache: 'no-store' } : undefined);
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' (data.json belum ada? jalankan workflow di tab Actions)');
+        return res.json();
+    }
 
-    function processMasterData(data) {
-        const raw = Array.isArray(data) ? data : (data && data.data);
-        if (!Array.isArray(raw)) throw new Error('Format data tidak dikenali');
-        const masterRaks = (!Array.isArray(data) && Array.isArray(data.raks)) ? data.raks : [];
+    function processMasterData(data) {
+        const raw = Array.isArray(data) ? data : (data && data.data);
+        if (!Array.isArray(raw)) throw new Error('Format data tidak dikenali');
+        const masterRaks = (!Array.isArray(data) && Array.isArray(data.raks)) ? data.raks : [];
 
-        rows = raw.slice(1).filter(r => Array.isArray(r) && r[0]).map(r => ({
-            rak: String(r[0]), ymd: normalizeDate(r[2]), tanggal: r[2],
-            shift: r[3], pallet: r[4], segel: r[5], penyok: r[6], label: r[7]
-        }));
+        rows = raw.slice(1).filter(r => Array.isArray(r) && r[0]).map(r => ({
+            rak: String(r[0]), ymd: normalizeDate(r[2]), tanggal: r[2],
+            shift: r[3], pallet: r[4], segel: r[5], penyok: r[6], label: r[7]
+        }));
 
-        const set = new Set(masterRaks.map(String));
-        rows.forEach(r => set.add(r.rak));
-        rakNames = [...set];
+        const set = new Set(masterRaks.map(String));
+        rows.forEach(r => set.add(r.rak));
+        rakNames = [...set];
 
-        const select = $('rakSelect');
-        const current = select.value;
-        select.innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>' +
-            rakNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
-        select.value = rakNames.includes(current) ? current : 'ALL';
+        const select = $('rakSelect');
+        const current = select.value;
+        select.innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>' +
+            rakNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+        select.value = rakNames.includes(current) ? current : 'ALL';
 
-        $('sync-time').textContent = 'Terakhir sinkron: ' + hhmm(new Date());
-        $('sync-time').className = 'text-sm font-bold text-emerald-600';$('rak-count').textContent = rakNames.length + ' rak';
-        setBadge('✔ Sinkron ' + hhmm(new Date()), 'bg-emerald-50 text-emerald-600');
-    }
+        $('sync-time').textContent = 'Terakhir sinkron: ' + hhmm(new Date());
+        $('sync-time').className = 'text-sm font-bold text-emerald-600';$('rak-count').textContent = rakNames.length + ' rak';
+        setBadge('✔ Sinkron ' + hhmm(new Date()), 'bg-emerald-50 text-emerald-600');
+    }
 
-    async function loadInitial() {
-        showMsg('Memuat data dari Master Database…', 'info', false);
-        try {
-            processMasterData(await fetchData(false));
-            hideMsg();
-        } catch (err) {
-            console.error('Gagal mengambil data dari GAS:', err);
-            setBadge('⚠ Gagal memuat', 'bg-red-50 text-red-600');
-            showMsg('Gagal memuat data Master Database (' + err.message + ').', 'err', false);
-        }
-        refresh();
-        checkUncheckedRaks();
-    }
+    async function loadInitial() {
+        showMsg('Memuat data dari Master Database…', 'info', false);
+        try {
+            processMasterData(await fetchData(false));
+            hideMsg();
+        } catch (err) {
+            console.error('Gagal mengambil data dari GAS:', err);
+            setBadge('⚠ Gagal memuat', 'bg-red-50 text-red-600');
+            showMsg('Gagal memuat data Master Database (' + err.message + ').', 'err', false);
+        }
+        refresh();
+        checkUncheckedRaks();
+    }
 
-    async function syncData() {
-        const btn = $('sync-btn');
-        const original = btn.innerHTML;
-        btn.innerHTML = '⏳ Menyelaraskan...';
-        btn.disabled = true;
-        setBadge('⏳ Sinkronisasi…', 'bg-slate-100 text-slate-500');
-        try {
-            const data = await fetchData(true);
-            processMasterData(data);
-            refresh();
-            checkUncheckedRaks();
-            showMsg(rows.length ? 'Berhasil! Data & daftar PIC telah disinkronkan.' : 'Sinkronisasi selesai, namun data kosong.', rows.length ? 'ok' : 'info');
-        } catch (err) {
-            console.error('Gagal sinkronisasi:', err);
-            setBadge('⚠ Sinkron gagal', 'bg-red-50 text-red-600');
-            showMsg('Gagal melakukan sinkronisasi data (' + err.message + ').', 'err');
-        } finally {
-            btn.innerHTML = original;
-            btn.disabled = false;
-        }
-    }
+    async function syncData() {
+        const btn = $('sync-btn');
+        const original = btn.innerHTML;
+        btn.innerHTML = '⏳ Menyelaraskan...';
+        btn.disabled = true;
+        setBadge('⏳ Sinkronisasi…', 'bg-slate-100 text-slate-500');
+        try {
+            const data = await fetchData(true);
+            processMasterData(data);
+            refresh();
+            checkUncheckedRaks();
+            showMsg(rows.length ? 'Berhasil! Data & daftar PIC telah disinkronkan.' : 'Sinkronisasi selesai, namun data kosong.', rows.length ? 'ok' : 'info');
+        } catch (err) {
+            console.error('Gagal sinkronisasi:', err);
+            setBadge('⚠ Sinkron gagal', 'bg-red-50 text-red-600');
+            showMsg('Gagal melakukan sinkronisasi data (' + err.message + ').', 'err');
+        } finally {
+            btn.innerHTML = original;
+            btn.disabled = false;
+        }
+    }
 
-    function getFilters() {
-        return { rak: $('rakSelect').value || 'ALL', start: $('startDate').value, end:$('endDate').value };
-    }
-    function inRange(r, start, end) {
-        if (!r.ymd) return !start && !end;
-        if (start && r.ymd < start) return false;
-        if (end && r.ymd > end) return false;
-        return true;
-    }
-    function setRange(start, end) { $('startDate').value = start; $('endDate').value = end; }
-    function setQuickDate(type) {
-        const today = toYMD(new Date());
-        setRange(type === '7days' ? addDays(today, -6) : today.slice(0, 8) + '01', today);
-        refresh();
-    }
-    function resetDateFilter() { setRange('', ''); refresh(); }
+    function getFilters() {
+        return { rak: $('rakSelect').value || 'ALL', start: $('startDate').value, end:$('endDate').value };
+    }
+    function inRange(r, start, end) {
+        if (!r.ymd) return !start && !end;
+        if (start && r.ymd < start) return false;
+        if (end && r.ymd > end) return false;
+        return true;
+    }
+    function setRange(start, end) { $('startDate').value = start; $('endDate').value = end; }
+    function setQuickDate(type) {
+        const today = toYMD(new Date());
+        setRange(type === '7days' ? addDays(today, -6) : today.slice(0, 8) + '01', today);
+        refresh();
+    }
+    function resetDateFilter() { setRange('', ''); refresh(); }
 
-    function sortDesc(list) {
-        return list.map((r, i) => [r, i])
-            .sort((a, b) => (b[0].ymd || '').localeCompare(a[0].ymd || '') || b[1] - a[1])
-            .map(x => x[0]);
-    }
-    const flagTd = (v, bad, extra = 'p-3') => `<td class="${extra} text-center ${bad ? 'text-red-600 font-semibold' : ''}">${esc(disp(v))}</td>`;
-    function histRow(r, showRak = true) {
-        return `<tr class="hover:bg-slate-50 transition">
-            ${showRak ? `<td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(r.rak)}</td>` : ''}
-            <td class="p-3 ${showRak ? '' : 'pl-6 '}font-medium whitespace-nowrap">${esc(r.ymd || disp(r.tanggal))}</td>
-            <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${esc(disp(r.shift))}</span></td>
-            ${flagTd(r.pallet, DEFECTS[0].test(r))}${flagTd(r.segel, DEFECTS[1].test(r))}${flagTd(r.penyok, DEFECTS[2].test(r))}${flagTd(r.label, DEFECTS[3].test(r))}
-        </tr>`;
-    }
-    const emptyRow = (cols, msg) => `<tr><td colspan="${cols}" class="p-6 text-center text-slate-400">${msg}</td></tr>`;
+    function sortDesc(list) {
+        return list.map((r, i) => [r, i])
+            .sort((a, b) => (b[0].ymd || '').localeCompare(a[0].ymd || '') || b[1] - a[1])
+            .map(x => x[0]);
+    }
+    const flagTd = (v, bad, extra = 'p-3') => `<td class="${extra} text-center ${bad ? 'text-red-600 font-semibold' : ''}">${esc(disp(v))}</td>`;
+    function histRow(r, showRak = true) {
+        return `<tr class="hover:bg-slate-50 transition">
+            ${showRak ? `<td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(r.rak)}</td>` : ''}
+            <td class="p-3 ${showRak ? '' : 'pl-6 '}font-medium whitespace-nowrap">${esc(r.ymd || disp(r.tanggal))}</td>
+            <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${esc(disp(r.shift))}</span></td>
+            ${flagTd(r.pallet, DEFECTS[0].test(r))}${flagTd(r.segel, DEFECTS[1].test(r))}${flagTd(r.penyok, DEFECTS[2].test(r))}${flagTd(r.label, DEFECTS[3].test(r))}
+        </tr>`;
+    }
+    const emptyRow = (cols, msg) => `<tr><td colspan="${cols}" class="p-6 text-center text-slate-400">${msg}</td></tr>`;
 
-    function refresh() {
-        const { rak, start, end } = getFilters();
-        const scoped = rows.filter(r => rak === 'ALL' || r.rak === rak);
-        const ranged = scoped.filter(r => inRange(r, start, end));
+    function refresh() {
+        const { rak, start, end } = getFilters();
+        const scoped = rows.filter(r => rak === 'ALL' || r.rak === rak);
+        const ranged = scoped.filter(r => inRange(r, start, end));
 
-        $('pic-name').textContent = rak === 'ALL' ? '🌐 Summary Keseluruhan Gudang' : (rak.split(' - ')[1] || rak);
-        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] \vert{}\vert{} rak);$('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
+        $('pic-name').textContent = rak === 'ALL' ? '🌐 Summary Keseluruhan Gudang' : (rak.split(' - ')[1] || rak);
+        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] || rak);$('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
 
-        $('total-inspeksi').textContent = scoped.length;
-        const latest = sortDesc(scoped)[0];
-        $('last-date').textContent = latest ? (latest.ymd || disp(latest.tanggal)) : '-';
-        $('last-shift').textContent = latest ? disp(latest.shift) : '-';
+        $('total-inspeksi').textContent = scoped.length;
+        const latest = sortDesc(scoped)[0];
+        $('last-date').textContent = latest ? (latest.ymd || disp(latest.tanggal)) : '-';
+        $('last-shift').textContent = latest ? disp(latest.shift) : '-';
 
-        let periode = 'Semua Periode';
-        if (start && end) {
-            const s = new Date(start + 'T00:00:00Z'), e = new Date(end + 'T00:00:00Z');
-            periode = (s.getUTCMonth() === e.getUTCMonth() && s.getUTCFullYear() === e.getUTCFullYear())
-                ? s.toLocaleDateString('id-ID', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'Rentang Filter';
-        } else if (start || end) periode = 'Rentang Filter';
-        $('label-bulan-berjalan').textContent = periode;
+        let periode = 'Semua Periode';
+        if (start && end) {
+            const s = new Date(start + 'T00:00:00Z'), e = new Date(end + 'T00:00:00Z');
+            periode = (s.getUTCMonth() === e.getUTCMonth() && s.getUTCFullYear() === e.getUTCFullYear())
+                ? s.toLocaleDateString('id-ID', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'Rentang Filter';
+        } else if (start || end) periode = 'Rentang Filter';
+        $('label-bulan-berjalan').textContent = periode;
 
-        const counts = DEFECTS.map(d => ranged.filter(d.test).length);
-        const defects = ranged.map(r => ({ r, issues: issuesOf(r) })).filter(x => x.issues.length);
-        state = { ranged, defects, scoped };
-        $('count-all-defects').textContent = defects.length;
-        $('count-temuan-total').textContent = `${counts.reduce((a, b) => a + b, 0)} temuan pada grafik (1 inspeksi bisa >1 temuan)`;
+        const counts = DEFECTS.map(d => ranged.filter(d.test).length);
+        const defects = ranged.map(r => ({ r, issues: issuesOf(r) })).filter(x => x.issues.length);
+        state = { ranged, defects, scoped };
+        $('count-all-defects').textContent = defects.length;
+        $('count-temuan-total').textContent = `${counts.reduce((a, b) => a + b, 0)} temuan pada grafik (1 inspeksi bisa >1 temuan)`;
 
-        renderChart(counts);
-        renderComplianceChart(start, end, rak);
-        renderLeaderboard(start, end);
+        renderChart(counts);
+        renderComplianceChart(start, end, rak);
+        renderLeaderboard(start, end);
 
-        const top5 = sortDesc(scoped).slice(0, 5);
-        $('table-body').innerHTML = top5.length ? top5.map(r => histRow(r)).join('') : emptyRow(7, 'Belum ada data tersedia.');
-    }
+        const top5 = sortDesc(scoped).slice(0, 5);
+        $('table-body').innerHTML = top5.length ? top5.map(r => histRow(r)).join('') : emptyRow(7, 'Belum ada data tersedia.');
+    }
 
-    function renderChart(counts) {
-        if (chart) { chart.data.datasets[0].data = counts; chart.update(); return; }
-        chart = new Chart($('defectChart').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: DEFECTS.map(d => d.label),
-                datasets: [{ label: 'Jumlah Temuan', data: counts, backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'], borderRadius: 8, barThickness: 35 }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                onClick: (e, els) => { if (els.length) showDefectDetail(els[0].index); },
-                onHover: (e, els) => { if (e.native) e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
-                scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, precision: 0 } }, x: { grid: { display: false } } },
-                plugins: { legend: { display: false } }
-            }
-        });
-    }
+    function renderChart(counts) {
+        if (chart) { chart.data.datasets[0].data = counts; chart.update(); return; }
+        chart = new Chart($('defectChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: DEFECTS.map(d => d.label),
+                datasets: [{ label: 'Jumlah Temuan', data: counts, backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'], borderRadius: 8, barThickness: 35 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                onClick: (e, els) => { if (els.length) showDefectDetail(els[0].index); },
+                onHover: (e, els) => { if (e.native) e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+                scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, precision: 0 } }, x: { grid: { display: false } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
 
-    const isSunday = ymd => new Date(ymd + 'T00:00:00Z').getUTCDay() === 0;
-    function expectedReports(start, end) {
-        const today = toYMD(new Date());
-        const dates = rows.map(r => r.ymd).filter(Boolean).sort();
-        const s = start || (dates.length ? dates[0] : today);
-        let e = end || today;
-        if (e > today) e = today;
-        if (!s || s > e) return 0;
-        let workdays = 0;
-        for (let d = s; d <= e; d = addDays(d, 1)) if (!isSunday(d)) workdays++;
-        return workdays;
-    }
+    const isSunday = ymd => new Date(ymd + 'T00:00:00Z').getUTCDay() === 0;
+    function expectedReports(start, end) {
+        const today = toYMD(new Date());
+        const dates = rows.map(r => r.ymd).filter(Boolean).sort();
+        const s = start || (dates.length ? dates[0] : today);
+        let e = end || today;
+        if (e > today) e = today;
+        if (!s || s > e) return 0;
+        let workdays = 0;
+        for (let d = s; d <= e; d = addDays(d, 1)) if (!isSunday(d)) workdays++;
+        return workdays;
+    }
 
-    function renderComplianceChart(start, end, rak) {
-        const expected = expectedReports(start, end);
-        const scopedRows = rows.filter(r => (rak === 'ALL' || r.rak === rak) && inRange(r, start, end));
-        const daysDoneSet = new Set();
-        scopedRows.forEach(r => {
-            if (r.ymd && !isSunday(r.ymd)) daysDoneSet.add(r.ymd);
-        });
-        const actualDays = daysDoneSet.size;
-        const pct = expected > 0 ? Math.min(100, Math.round((actualDays / expected) * 100)) : 0;
-        const remainder = Math.max(0, 100 - pct);
+    function renderComplianceChart(start, end, rak) {
+        const expected = expectedReports(start, end);
+        const scopedRows = rows.filter(r => (rak === 'ALL' || r.rak === rak) && inRange(r, start, end));
+        const daysDoneSet = new Set();
+        scopedRows.forEach(r => {
+            if (r.ymd && !isSunday(r.ymd)) daysDoneSet.add(r.ymd);
+        });
+        const actualDays = daysDoneSet.size;
+        const pct = expected > 0 ? Math.min(100, Math.round((actualDays / expected) * 100)) : 0;
+        const remainder = Math.max(0, 100 - pct);
 
-        $('compliance-badge').textContent = pct + '\%';$('compliance-desc').textContent = `Tercapai ${actualDays} dari ${expected} hari kerja`;
+        $('compliance-badge').textContent = pct + '%';$('compliance-desc').textContent = `Tercapai ${actualDays} dari ${expected} hari kerja`;
 
-        const ctx = $('complianceChart').getContext('2d');
-        if (complianceChart) {
-            complianceChart.data.datasets[0].data = [pct, remainder];
-            complianceChart.update();
-            return;
-        }
+        const ctx = $('complianceChart').getContext('2d');
+        if (complianceChart) {
+            complianceChart.data.datasets[0].data = [pct, remainder];
+            complianceChart.update();
+            return;
+        }
 
-        complianceChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Tercapai (%)', 'Belum (%)'],
-                datasets: [{
-                    data: [pct, remainder],
-                    backgroundColor: ['#10b981', '#f1f5f9'],
-                    borderWidth: 0,
-                    cutout: '75%'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataIndex === 0 ? ` Capaian: ${pct}%` : ` Sisa: ${remainder}%`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
+        complianceChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Tercapai (%)', 'Belum (%)'],
+                datasets: [{
+                    data: [pct, remainder],
+                    backgroundColor: ['#10b981', '#f1f5f9'],
+                    borderWidth: 0,
+                    cutout: '75%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataIndex === 0 ? ` Capaian: ${pct}%` : ` Sisa: ${remainder}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 
-    function renderLeaderboard(start, end) {
-        const counts = Object.fromEntries(rakNames.map(n => [n, 0]));
-        const daysDone = Object.fromEntries(rakNames.map(n => [n, new Set()]));
-        rows.forEach(r => {
-            if (!inRange(r, start, end) || counts[r.rak] === undefined) return;
-            counts[r.rak]++;
-            if (r.ymd && !isSunday(r.ymd)) daysDone[r.rak].add(r.ymd);
-        });
-        const expected = expectedReports(start, end);
-        const sorted = rakNames.map(name => ({ name, count: counts[name], days: daysDone[name].size }))
-            .sort((a, b) => b.days - a.days || b.count - a.count);
-        const pctOf = it => expected ? Math.min(100, Math.round(it.days / expected * 100)) : 0;
-        const belum = sorted.filter(it => it.count === 0).length;
-        const kurang = sorted.filter(it => it.count > 0 && pctOf(it) < 40).length;
-        const parts = [];
-        if (belum) parts.push(`${belum} PIC belum lapor`);
-        if (kurang) parts.push(`${kurang} kurang aktif`);
-        $('leaderboard-summary').textContent = !sorted.length ? '' : (parts.length ? '⚠ ' + parts.join(' · ') : (expected ? '✔ Semua PIC aktif' : ''));
-        const tbody = $('leaderboard-body');
-        tbody.innerHTML = '';
-        if (!sorted.length) { tbody.innerHTML = emptyRow(4, 'Belum ada data leaderboard.'); return; }
+    function renderLeaderboard(start, end) {
+        const counts = Object.fromEntries(rakNames.map(n => [n, 0]));
+        const daysDone = Object.fromEntries(rakNames.map(n => [n, new Set()]));
+        rows.forEach(r => {
+            if (!inRange(r, start, end) || counts[r.rak] === undefined) return;
+            counts[r.rak]++;
+            if (r.ymd && !isSunday(r.ymd)) daysDone[r.rak].add(r.ymd);
+        });
+        const expected = expectedReports(start, end);
+        const sorted = rakNames.map(name => ({ name, count: counts[name], days: daysDone[name].size }))
+            .sort((a, b) => b.days - a.days || b.count - a.count);
+        const pctOf = it => expected ? Math.min(100, Math.round(it.days / expected * 100)) : 0;
+        const belum = sorted.filter(it => it.count === 0).length;
+        const kurang = sorted.filter(it => it.count > 0 && pctOf(it) < 40).length;
+        const parts = [];
+        if (belum) parts.push(`${belum} PIC belum lapor`);
+        if (kurang) parts.push(`${kurang} kurang aktif`);
+        $('leaderboard-summary').textContent = !sorted.length ? '' : (parts.length ? '⚠ ' + parts.join(' · ') : (expected ? '✔ Semua PIC aktif' : ''));
+        const tbody = $('leaderboard-body');
+        tbody.innerHTML = '';
+        if (!sorted.length) { tbody.innerHTML = emptyRow(4, 'Belum ada data leaderboard.'); return; }
 
-        let rank = 0;
-        sorted.forEach((item, i) => {
-            if (i === 0 || item.count !== sorted[i - 1].count || item.days !== sorted[i - 1].days) rank = i + 1;
-            const pct = expected ? Math.min(100, Math.round(item.days / expected * 100)) : 0;
-            let badge = ['bg-emerald-50 text-emerald-700', 'Sangat Aktif'];
-            if (item.count === 0) badge = ['bg-red-50 text-red-600', 'Belum Lapor'];
-            else if (pct < 40) badge = ['bg-red-50 text-red-600', 'Kurang Aktif'];
-            else if (pct < 80) badge = ['bg-amber-50 text-amber-700', 'Cukup Aktif'];
+        let rank = 0;
+        sorted.forEach((item, i) => {
+            if (i === 0 || item.count !== sorted[i - 1].count || item.days !== sorted[i - 1].days) rank = i + 1;
+            const pct = expected ? Math.min(100, Math.round(item.days / expected * 100)) : 0;
+            let badge = ['bg-emerald-50 text-emerald-700', 'Sangat Aktif'];
+            if (item.count === 0) badge = ['bg-red-50 text-red-600', 'Belum Lapor'];
+            else if (pct < 40) badge = ['bg-red-50 text-red-600', 'Kurang Aktif'];
+            else if (pct < 80) badge = ['bg-amber-50 text-amber-700', 'Cukup Aktif'];
 
-            const rankBadge = rank === 1 ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold text-xs">🥇 #1</span>`
-                : rank === 2 ? `<span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded-full font-bold text-xs">🥈 #2</span>`
-                : rank === 3 ? `<span class="bg-amber-50 text-amber-900 px-2 py-0.5 rounded-full font-bold text-xs">🥉 #3</span>`
-                : `<span class="font-bold text-slate-500">#${rank}</span>`;
+            const rankBadge = rank === 1 ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold text-xs">🥇 #1</span>`
+                : rank === 2 ? `<span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded-full font-bold text-xs">🥈 #2</span>`
+                : rank === 3 ? `<span class="bg-amber-50 text-amber-900 px-2 py-0.5 rounded-full font-bold text-xs">🥉 #3</span>`
+                : `<span class="font-bold text-slate-500">#${rank}</span>`;
 
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-blue-50/50 cursor-pointer transition';
-            tr.innerHTML = `
-                <td class="p-4 pl-6 text-center">${rankBadge}</td>
-                <td class="p-4 font-semibold text-slate-800 text-xs">
-                    <div class="flex items-center justify-between gap-2"><span>${esc(item.name)}</span>
-                    <span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold no-print">Klik Detail</span></div>
-                </td>
-                <td class="p-4 text-center font-bold text-blue-600">${item.count} Laporan</td>
-                <td class="p-4 pr-6 text-center"><span class="text-xs px-2.5 py-1 rounded-full font-semibold ${badge[0]}">${badge[1]}${expected ? ` · ${item.days}/${expected} hari (${pct}%)` : ''}</span></td>`;
-            tr.addEventListener('click', () => openPicDetail(item.name));
-            tbody.appendChild(tr);
-        });
-    }
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-blue-50/50 cursor-pointer transition';
+            tr.innerHTML = `
+                <td class="p-4 pl-6 text-center">${rankBadge}</td>
+                <td class="p-4 font-semibold text-slate-800 text-xs">
+                    <div class="flex items-center justify-between gap-2"><span>${esc(item.name)}</span>
+                    <span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold no-print">Klik Detail</span></div>
+                </td>
+                <td class="p-4 text-center font-bold text-blue-600">${item.count} Laporan</td>
+                <td class="p-4 pr-6 text-center"><span class="text-xs px-2.5 py-1 rounded-full font-semibold ${badge[0]}">${badge[1]}${expected ? ` · ${item.days}/${expected} hari (${pct}%)` : ''}</span></td>`;
+            tr.addEventListener('click', () => openPicDetail(item.name));
+            tbody.appendChild(tr);
+        });
+    }
 
-    function checkUncheckedRaks() {
-        const target = $('checkDate').value;
-        const box = $('unchecked-list');
-        if (!target || !rakNames.length) {
-            box.innerHTML = `<p class="text-center text-slate-400 italic py-4">${rows.length ? 'Pilih tanggal pengecekan.' : 'Belum ada data.'}</p>`;
-            return;
-        }
-        const done = new Set(rows.filter(r => r.ymd === target).map(r => r.rak));
-        const unchecked = rakNames.filter(n => !done.has(n));
-        box.innerHTML = unchecked.length === 0
-            ? `<div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-medium">Luar biasa! Semua area sudah diinspeksi pada tanggal ini.</div>`
-            : `<p class="text-xs font-bold text-red-600 mb-2">Total Area Belum di Inspeksi (${unchecked.length}):</p>
-                <ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">${unchecked.map(n => `<li><span class="font-semibold text-slate-900">${esc(n)}</span></li>`).join('')}</ul>`;
-    }
+    function checkUncheckedRaks() {
+        const target = $('checkDate').value;
+        const box = $('unchecked-list');
+        if (!target || !rakNames.length) {
+            box.innerHTML = `<p class="text-center text-slate-400 italic py-4">${rows.length ? 'Pilih tanggal pengecekan.' : 'Belum ada data.'}</p>`;
+            return;
+        }
+        const done = new Set(rows.filter(r => r.ymd === target).map(r => r.rak));
+        const unchecked = rakNames.filter(n => !done.has(n));
+        box.innerHTML = unchecked.length === 0
+            ? `<div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-medium">Luar biasa! Semua area sudah diinspeksi pada tanggal ini.</div>`
+            : `<p class="text-xs font-bold text-red-600 mb-2">Total Area Belum di Inspeksi (${unchecked.length}):</p>
+               <ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">${unchecked.map(n => `<li><span class="font-semibold text-slate-900">${esc(n)}</span></li>`).join('')}</ul>`;
+    }
 
-    function openModal({ title, sub, cols, body, wide }) {
-        $('modal-title').textContent = title;
-        $('modal-sub').textContent = sub \vert{}\vert{} '';$('modal-box').className = `bg-white rounded-2xl w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'} max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`;
-        $('modal-head').innerHTML = cols.map((c, i) => `<th class="p-3 ${i === 0 ? 'pl-6' : ''} font-semibold">${c}</th>`).join('');
-        $('modal-body').innerHTML = body;
-        $('modal').classList.remove('hidden');$('modal-close').focus();
-    }
-    function closeModal() { $('modal').classList.add('hidden'); }
-    $('modal').addEventListener('click', e => { if (e.target ===$('modal')) closeModal(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    function openModal({ title, sub, cols, body, wide }) {
+        $('modal-title').textContent = title;
+        $('modal-sub').textContent = sub || '';$('modal-box').className = `bg-white rounded-2xl w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'} max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`;
+        $('modal-head').innerHTML = cols.map((c, i) => `<th class="p-3 ${i === 0 ? 'pl-6' : ''} font-semibold">${c}</th>`).join('');
+        $('modal-body').innerHTML = body;
+        $('modal').classList.remove('hidden');$('modal-close').focus();
+    }
+    function closeModal() { $('modal').classList.add('hidden'); }
+    $('modal').addEventListener('click', e => { if (e.target ===$('modal')) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-    const HIST_COLS = ['Tanggal', 'Shift', 'Pallet Rusak', 'Segel Baik', 'Produk Penyok', 'Label Baik'];
+    const HIST_COLS = ['Tanggal', 'Shift', 'Pallet Rusak', 'Segel Baik', 'Produk Penyok', 'Label Baik'];
 
-    function openSemuaRiwayatModal() {
-        openModal({
-            title: 'Semua Riwayat Inspeksi', sub: 'Seluruh laporan pada rak terpilih (semua periode)',
-            cols: ['Rak / PIC', ...HIST_COLS], wide: true,
-            body: state.scoped.length ? sortDesc(state.scoped).map(r => histRow(r)).join('') : emptyRow(7, 'Belum ada data tersedia.')
-        });
-    }
-    function openPicDetail(rakName) {
-        const { start, end } = getFilters();
-        const list = sortDesc(rows.filter(r => r.rak === rakName && inRange(r, start, end)));
-        openModal({
-            title: `Detail Laporan: ${rakName}`, sub: 'Riwayat inspeksi pada rentang tanggal terpilih',
-            cols: HIST_COLS, wide: true,
-            body: list.length ? list.map(r => histRow(r, false)).join('') : emptyRow(6, 'Tidak ada riwayat laporan untuk PIC ini pada rentang tanggal tersebut.')
-        });
-    }
-    const defectRows = list => list.map(x => `<tr class="hover:bg-red-50/30 transition">
-        <td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(x.r.rak)}</td>
-        <td class="p-3 font-medium whitespace-nowrap">${esc(x.r.ymd || disp(x.r.tanggal))}</td>
-        <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${esc(disp(x.r.shift))}</span></td>
-        <td class="p-3 pr-6 text-red-600 font-semibold">${esc(x.issues.join(', '))}</td></tr>`).join('');
+    function openSemuaRiwayatModal() {
+        openModal({
+            title: 'Semua Riwayat Inspeksi', sub: 'Seluruh laporan pada rak terpilih (semua periode)',
+            cols: ['Rak / PIC', ...HIST_COLS], wide: true,
+            body: state.scoped.length ? sortDesc(state.scoped).map(r => histRow(r)).join('') : emptyRow(7, 'Belum ada data tersedia.')
+        });
+    }
+    function openPicDetail(rakName) {
+        const { start, end } = getFilters();
+        const list = sortDesc(rows.filter(r => r.rak === rakName && inRange(r, start, end)));
+        openModal({
+            title: `Detail Laporan: ${rakName}`, sub: 'Riwayat inspeksi pada rentang tanggal terpilih',
+            cols: HIST_COLS, wide: true,
+            body: list.length ? list.map(r => histRow(r, false)).join('') : emptyRow(6, 'Tidak ada riwayat laporan untuk PIC ini pada rentang tanggal tersebut.')
+        });
+    }
+    const defectRows = list => list.map(x => `<tr class="hover:bg-red-50/30 transition">
+        <td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(x.r.rak)}</td>
+        <td class="p-3 font-medium whitespace-nowrap">${esc(x.r.ymd || disp(x.r.tanggal))}</td>
+        <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${esc(disp(x.r.shift))}</span></td>
+        <td class="p-3 pr-6 text-red-600 font-semibold">${esc(x.issues.join(', '))}</td></tr>`).join('');
 
-    function openSemuaTemuanModal() {
-        const list = sortDesc(state.defects.map(x => x.r)).map(r => state.defects.find(x => x.r === r));
-        openModal({
-            title: `Detail Inspeksi Bermasalah (${$('label-bulan-berjalan').textContent})`,
-            sub: 'Inspeksi dengan ketidaksesuaian pada rak & rentang tanggal terpilih',
-            cols: ['Rak / PIC', 'Tanggal', 'Shift', 'Jenis Temuan Masalah'],
-            body: list.length ? defectRows(list) : emptyRow(4, 'Tidak ada riwayat temuan masalah pada rentang tanggal ini.')
-        });
-    }
-    function showDefectDetail(index) {
-        const d = DEFECTS[index];
-        const list = sortDesc(state.ranged.filter(d.test)).map(r => ({ r, issues: [d.label] }));
-        openModal({
-            title: `Detail Riwayat: ${d.label}`, sub: 'Daftar inspeksi kategori ini pada rak & rentang tanggal terpilih',
-            cols: ['Rak / PIC', 'Tanggal', 'Shift', 'Status Keterangan'],
-            body: list.length ? defectRows(list) : emptyRow(4, 'Tidak ada riwayat temuan untuk kategori ini pada rentang tanggal tersebut.')
-        });
-    }
+    function openSemuaTemuanModal() {
+        const list = sortDesc(state.defects.map(x => x.r)).map(r => state.defects.find(x => x.r === r));
+        openModal({
+            title: `Detail Inspeksi Bermasalah (${$('label-bulan-berjalan').textContent})`,
+            sub: 'Inspeksi dengan ketidaksesuaian pada rak & rentang tanggal terpilih',
+            cols: ['Rak / PIC', 'Tanggal', 'Shift', 'Jenis Temuan Masalah'],
+            body: list.length ? defectRows(list) : emptyRow(4, 'Tidak ada riwayat temuan masalah pada rentang tanggal ini.')
+        });
+    }
+    function showDefectDetail(index) {
+        const d = DEFECTS[index];
+        const list = sortDesc(state.ranged.filter(d.test)).map(r => ({ r, issues: [d.label] }));
+        openModal({
+            title: `Detail Riwayat: ${d.label}`, sub: 'Daftar inspeksi kategori ini pada rak & rentang tanggal terpilih',
+            cols: ['Rak / PIC', 'Tanggal', 'Shift', 'Status Keterangan'],
+            body: list.length ? defectRows(list) : emptyRow(4, 'Tidak ada riwayat temuan untuk kategori ini pada rentang tanggal tersebut.')
+        });
+    }
 
-    function exportToCSV() {
-        const list = sortDesc(state.ranged);
-        if (!list.length) { showMsg('Tidak ada data untuk diexport pada filter ini.', 'err'); return; }
-        const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-        const lines = [['Rak / PIC', 'Tanggal', 'Shift', 'Pallet Rusak', 'Segel Baik', 'Produk Penyok', 'Label Baik'].map(cell).join(',')];
-        list.forEach(r => lines.push([r.rak, r.ymd || r.tanggal, r.shift, r.pallet, r.segel, r.penyok, r.label].map(cell).join(',')));
-        const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `laporan_monitoring_racking_${toYMD(new Date())}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        showMsg(`${list.length} baris diunduh (sesuai filter aktif).`, 'ok');
-    }
+    function exportToCSV() {
+        const list = sortDesc(state.ranged);
+        if (!list.length) { showMsg('Tidak ada data untuk diexport pada filter ini.', 'err'); return; }
+        const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const lines = [['Rak / PIC', 'Tanggal', 'Shift', 'Pallet Rusak', 'Segel Baik', 'Produk Penyok', 'Label Baik'].map(cell).join(',')];
+        list.forEach(r => lines.push([r.rak, r.ymd || r.tanggal, r.shift, r.pallet, r.segel, r.penyok, r.label].map(cell).join(',')));
+        const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `laporan_monitoring_racking_${toYMD(new Date())}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showMsg(`${list.length} baris diunduh (sesuai filter aktif).`, 'ok');
+    }
 
-    (function init() {
-        const today = toYMD(new Date());
-        $('checkDate').value = today;
-        setRange(today.slice(0, 8) + '01', today);
-        $('rakSelect').innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>';
-        loadInitial();
-    })();
+    (function init() {
+        const today = toYMD(new Date());
+        $('checkDate').value = today;
+        setRange(today.slice(0, 8) + '01', today);
+        $('rakSelect').innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>';
+        loadInitial();
+    })();
 </script>
 </body>
 </html>
