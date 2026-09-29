@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Monitoring & Audit Racking Gudang</title>
+    <!-- Tailwind CSS (play CDN: cukup untuk pemakaian internal) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js (versi dipin) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         .modal-body-scroll { max-height: 60vh; overflow-y: auto; }
@@ -24,7 +26,7 @@
 
 <div class="max-w-7xl mx-auto px-4 py-8">
 
-    <!-- Banner pesan -->
+    <!-- Banner pesan (loading / sukses / error) -->
     <div id="msg" class="no-print hidden mb-4 px-4 py-3 rounded-xl text-sm font-medium" role="status"></div>
 
     <!-- Header -->
@@ -41,9 +43,9 @@
 
         <div class="flex flex-col md:flex-row items-start md:items-center gap-3 w-full md:w-auto">
             <div class="flex items-center gap-2 no-print flex-wrap">
-                <button onclick="syncData()" id="sync-btn" title="Muat ulang data terbaru" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🔄 Sinkronkan Data</button>
-                <button onclick="exportToCSV()" title="Unduh data sesuai filter aktif" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">📥 Unduh CSV</button>
-                <button onclick="window.print()" title="Cetak PDF" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🖨️ Cetak PDF</button>
+                <button onclick="syncData()" id="sync-btn" title="Muat ulang data terbaru (data diperbarui otomatis tiap 15 menit)" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🔄 Sinkronkan Data</button>
+                <button onclick="exportToCSV()" title="Unduh data sesuai filter aktif (CSV, bisa dibuka di Excel)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">📥 Unduh CSV</button>
+                <button onclick="window.print()" title="Cetak / Simpan PDF" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl shadow-sm transition">🖨️ Cetak PDF</button>
             </div>
             <div class="w-full md:w-auto flex flex-col gap-1 no-print">
                 <label for="rakSelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rak & PIC:</label>
@@ -100,35 +102,35 @@
             <button onclick="resetDateFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium transition">Semua Data</button>
             <div class="h-6 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
             <div class="flex items-center gap-1.5">
-                <input type="date" id="startDate" onchange="refresh()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
+                <input type="date" id="startDate" onchange="refresh()" aria-label="Tanggal mulai" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
                 <span class="text-xs text-slate-400">s/d</span>
-                <input type="date" id="endDate" onchange="refresh()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
+                <input type="date" id="endDate" onchange="refresh()" aria-label="Tanggal akhir" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500">
             </div>
         </div>
     </div>
 
-    <!-- Grid Grafik -->
+    <!-- Grid Grafik (Komparasi Temuan & Grafik Persentase Bulan Berjalan) -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <!-- Grafik Temuan -->
+        <!-- Grafik Temuan (2 Kolom) -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col justify-between">
             <div>
                 <div class="flex justify-between items-start mb-1">
                     <h2 class="text-base font-bold text-slate-800">Komparasi Jenis Temuan Masalah</h2>
-                    <span class="no-print text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded">Klik Grafik untuk Detail</span>
+                    <span class="no-print text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded">Klik Batang Grafik untuk Detail</span>
                 </div>
                 <p class="text-xs text-slate-400 mb-4">Akumulasi ketidaksesuaian standar pada rak & rentang tanggal terpilih</p>
             </div>
             <div class="relative h-64 w-full"><canvas id="defectChart"></canvas></div>
         </div>
 
-        <!-- Grafik Persentase -->
+        <!-- Grafik Persentase Bulan Berjalan (1 Kolom) -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
             <div>
                 <div class="flex justify-between items-start mb-1">
                     <h2 class="text-base font-bold text-slate-800">Capaian Kepatuhan</h2>
                     <span id="compliance-badge" class="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded">0%</span>
                 </div>
-                <p class="text-xs text-slate-400 mb-2">Persentase area/rak yang sudah diinspeksi</p>
+                <p class="text-xs text-slate-400 mb-2">Persentase hari terlapor vs hari kerja (Bulan Berjalan)</p>
             </div>
             <div class="relative h-52 w-full flex items-center justify-center my-2">
                 <canvas id="complianceChart"></canvas>
@@ -144,7 +146,7 @@
                 <h2 class="text-base font-bold text-slate-800">Summary: Rak Belum Dicek</h2>
                 <p class="text-xs text-slate-500">Daftar rak yang belum ada laporan pada tanggal tertentu</p>
             </div>
-            <input type="date" id="checkDate" onchange="checkUncheckedRaks()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500 font-semibold">
+            <input type="date" id="checkDate" onchange="checkUncheckedRaks()" aria-label="Tanggal pengecekan" class="border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-blue-500 font-semibold">
         </div>
         <div id="unchecked-list" class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 text-sm text-slate-600 w-full">
             <p class="text-center text-slate-400 italic py-4">Memuat status pemeriksaan...</p>
@@ -154,8 +156,8 @@
     <!-- Leaderboard -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
         <div class="p-6 border-b border-slate-100">
-            <h2 class="text-base font-bold text-slate-800">🏆 Leaderboard Kepatuhan PIC</h2>
-            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporan. Keaktifan = jumlah hari kerja yang ada laporan ÷ total hari kerja.</p>
+            <h2 class="text-base font-bold text-slate-800">🏆 Leaderboard Kepatuhan PIC (Audit Compliance)</h2>
+            <p class="text-xs text-slate-500">Klik baris PIC untuk melihat riwayat laporannya. Keaktifan = jumlah hari kerja (Senin–Sabtu) yang sudah ada laporan ÷ total hari kerja pada rentang terpilih. Urutan: hari terlapor terbanyak, lalu jumlah laporan.</p>
             <p id="leaderboard-summary" class="text-xs font-semibold text-red-600 mt-1"></p>
         </div>
         <div id="leaderboard-scroll" class="overflow-auto max-h-[420px]">
@@ -164,7 +166,7 @@
                     <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
                         <th class="p-4 pl-6 font-semibold w-24 text-center">Rank</th>
                         <th class="p-4 font-semibold">Rak / PIC</th>
-                        <th class="p-4 font-semibold text-center">Total Laporan</th>
+                        <th class="p-4 font-semibold text-center">Total Laporan Dikirim</th>
                         <th class="p-4 font-semibold pr-6 text-center">Status Keaktifan</th>
                     </tr>
                 </thead>
@@ -173,14 +175,14 @@
         </div>
     </div>
 
-    <!-- Riwayat -->
+    <!-- Riwayat terbaru -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="p-6 border-b border-slate-100 flex justify-between items-center">
             <div>
                 <h2 class="text-base font-bold text-slate-800">Riwayat Inspeksi Terbaru</h2>
-                <p class="text-xs text-slate-500">Menampilkan 5 laporan terbaru</p>
+                <p class="text-xs text-slate-500">Menampilkan 5 laporan pemeriksaan terbaru</p>
             </div>
-            <button onclick="openSemuaRiwayatModal()" class="no-print bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg shadow-sm font-medium">Tampilkan Semua Data</button>
+            <button onclick="openSemuaRiwayatModal()" class="no-print bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg shadow-sm transition font-medium">Tampilkan Semua Data</button>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
@@ -202,14 +204,14 @@
 </div>
 
 <!-- MODAL UMUM -->
-<div id="modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+<div id="modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div id="modal-box" class="bg-white rounded-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <div>
                 <h3 id="modal-title" class="text-base font-bold text-slate-900"></h3>
                 <p id="modal-sub" class="text-xs text-slate-500"></p>
             </div>
-            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
+            <button onclick="closeModal()" aria-label="Tutup" class="text-slate-400 hover:text-slate-600 font-bold text-xl px-2">&times;</button>
         </div>
         <div class="overflow-y-auto flex-1 modal-body-scroll">
             <table class="w-full text-left border-collapse">
@@ -218,13 +220,13 @@
             </table>
         </div>
         <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-            <button onclick="closeModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
+            <button id="modal-close" onclick="closeModal()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-5 py-2 rounded-lg font-medium">Tutup</button>
         </div>
     </div>
 </div>
 
 <script>
-    const DATA_URL = "data.json";
+    const DATA_URL = "data.json";   // dibuat otomatis oleh GitHub Actions (scripts/build_data.py)
     const TZ = "Asia/Jakarta";
 
     const $ = id => document.getElementById(id);
@@ -258,9 +260,9 @@
 
     const YES = ['ya', 'true', 'yes', 'y'], NO = ['tidak', 'false', 'no', 'n'];
     const DEFECTS = [
-        { label: 'Pallet Rusak', test: r => YES.includes(norm(r.pallet)) },
+        { label: 'Pallet Rusak',    test: r => YES.includes(norm(r.pallet)) },
         { label: 'Segel Tidak Baik', test: r => NO.includes(norm(r.segel)) },
-        { label: 'Produk Penyok', test: r => YES.includes(norm(r.penyok)) },
+        { label: 'Produk Penyok',    test: r => YES.includes(norm(r.penyok)) },
         { label: 'Label Tidak Baik', test: r => NO.includes(norm(r.label)) }
     ];
     const issuesOf = r => DEFECTS.filter(d => d.test(r)).map(d => d.label);
@@ -275,9 +277,8 @@
     function showMsg(text, type = 'info', auto = true) {
         const el = $('msg');
         const cls = { info: 'bg-blue-50 text-blue-700', ok: 'bg-emerald-50 text-emerald-700', err: 'bg-red-50 text-red-700' }[type];
-        el.className = 'no-print mb-4 px-4 py-3 rounded-xl text-sm font-medium ' + cls;
+        el.className = `no-print mb-4 px-4 py-3 rounded-xl text-sm font-medium ${cls}`;
         el.textContent = text;
-        el.classList.remove('hidden');
         clearTimeout(msgTimer);
         if (auto) msgTimer = setTimeout(() => el.classList.add('hidden'), 4000);
     }
@@ -286,13 +287,14 @@
     function setBadge(text, cls) {
         const b = $('sync-badge');
         b.textContent = text;
-        b.className = 'text-xs font-medium px-2 py-0.5 rounded-full ' + cls;
+        b.className = `text-xs font-medium px-2 py-0.5 rounded-full ${cls}`;
     }
 
     async function fetchData(sync) {
+        // Muat biasa: cache per menit. Tombol Sinkronkan: selalu ambil ulang.
         const t = sync ? Date.now() : Math.floor(Date.now() / 60000);
         const res = await fetch(DATA_URL + '?t=' + t, sync ? { cache: 'no-store' } : undefined);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' (data.json belum ada? jalankan workflow di tab Actions)');
         return res.json();
     }
 
@@ -313,7 +315,7 @@
         const select = $('rakSelect');
         const current = select.value;
         select.innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>' +
-            rakNames.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
+            rakNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
         select.value = rakNames.includes(current) ? current : 'ALL';
 
         $('sync-time').textContent = 'Terakhir sinkron: ' + hhmm(new Date());
@@ -324,13 +326,12 @@
     async function loadInitial() {
         showMsg('Memuat data dari Master Database…', 'info', false);
         try {
-            const data = await fetchData(false);
-            processMasterData(data);
+            processMasterData(await fetchData(false));
             hideMsg();
         } catch (err) {
-            console.error('Gagal mengambil data:', err);
+            console.error('Gagal mengambil data dari GAS:', err);
             setBadge('⚠ Gagal memuat', 'bg-red-50 text-red-600');
-            showMsg('Gagal memuat data (' + err.message + ').', 'err', false);
+            showMsg('Gagal memuat data Master Database (' + err.message + ').', 'err', false);
         }
         refresh();
         checkUncheckedRaks();
@@ -347,11 +348,11 @@
             processMasterData(data);
             refresh();
             checkUncheckedRaks();
-            showMsg(rows.length ? 'Berhasil disinkronkan.' : 'Selesai, data kosong.', 'ok');
+            showMsg(rows.length ? 'Berhasil! Data & daftar PIC telah disinkronkan.' : 'Sinkronisasi selesai, namun data kosong.', rows.length ? 'ok' : 'info');
         } catch (err) {
-            console.error('Gagal sinkron:', err);
+            console.error('Gagal sinkronisasi:', err);
             setBadge('⚠ Sinkron gagal', 'bg-red-50 text-red-600');
-            showMsg('Gagal sinkronisasi (' + err.message + ').', 'err');
+            showMsg('Gagal melakukan sinkronisasi data (' + err.message + ').', 'err');
         } finally {
             btn.innerHTML = original;
             btn.disabled = false;
@@ -376,19 +377,20 @@
     function resetDateFilter() { setRange('', ''); refresh(); }
 
     function sortDesc(list) {
-        return list.map((r, i) => [r, i]).sort((a, b) => (b[0].ymd || '').localeCompare(a[0].ymd || '') || b[1] - a[1]).map(x => x[0]);
+        return list.map((r, i) => [r, i])
+            .sort((a, b) => (b[0].ymd || '').localeCompare(a[0].ymd || '') || b[1] - a[1])
+            .map(x => x[0]);
     }
-    
-    const flagTd = (v, bad, extra = 'p-3') => '<td class="' + extra + ' text-center ' + (bad ? 'text-red-600 font-semibold' : '') + '">' + esc(disp(v)) + '</td>';
+    const flagTd = (v, bad, extra = 'p-3') => `<td class="${extra} text-center ${bad ? 'text-red-600 font-semibold' : ''}">${esc(disp(v))}</td>`;
     function histRow(r, showRak = true) {
-        return '<tr class="hover:bg-slate-50 transition">' +
-            (showRak ? '<td class="p-3 pl-6 font-semibold text-xs text-slate-700">' + esc(r.rak) + '</td>' : '') +
-            '<td class="p-3 ' + (showRak ? '' : 'pl-6 ') + 'font-medium whitespace-nowrap">' + esc(r.ymd || disp(r.tanggal)) + '</td>' +
-            '<td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">' + esc(disp(r.shift)) + '</span></td>' +
-            flagTd(r.pallet, DEFECTS[0].test(r)) + flagTd(r.segel, DEFECTS[1].test(r)) + flagTd(r.penyok, DEFECTS[2].test(r)) + flagTd(r.label, DEFECTS[3].test(r)) +
-        '</tr>';
+        return `<tr class="hover:bg-slate-50 transition">
+            ${showRak ? `<td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(r.rak)}</td>` : ''}
+            <td class="p-3 ${showRak ? '' : 'pl-6 '}font-medium whitespace-nowrap">${esc(r.ymd || disp(r.tanggal))}</td>
+            <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${esc(disp(r.shift))}</span></td>
+            ${flagTd(r.pallet, DEFECTS[0].test(r))}${flagTd(r.segel, DEFECTS[1].test(r))}${flagTd(r.penyok, DEFECTS[2].test(r))}${flagTd(r.label, DEFECTS[3].test(r))}
+        </tr>`;
     }
-    const emptyRow = (cols, msg) => '<tr><td colspan="' + cols + '" class="p-6 text-center text-slate-400">' + msg + '</td></tr>';
+    const emptyRow = (cols, msg) => `<tr><td colspan="${cols}" class="p-6 text-center text-slate-400">${msg}</td></tr>`;
 
     function refresh() {
         const { rak, start, end } = getFilters();
@@ -396,7 +398,7 @@
         const ranged = scoped.filter(r => inRange(r, start, end));
 
         $('pic-name').textContent = rak === 'ALL' ? '🌐 Summary Keseluruhan Gudang' : (rak.split(' - ')[1] || rak);
-        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] \vert{}\vert{} rak);$('print-range').textContent = 'Rak: ' + (rak === 'ALL' ? 'Semua' : rak) + ' | Periode: ' + (start || 'awal') + ' s/d ' + (end || 'sekarang');
+        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] || rak);$('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
 
         $('total-inspeksi').textContent = scoped.length;
         const latest = sortDesc(scoped)[0];
@@ -415,7 +417,7 @@
         const defects = ranged.map(r => ({ r, issues: issuesOf(r) })).filter(x => x.issues.length);
         state = { ranged, defects, scoped };
         $('count-all-defects').textContent = defects.length;
-        $('count-temuan-total').textContent = counts.reduce((a, b) => a + b, 0) + ' temuan pada grafik';
+        $('count-temuan-total').textContent = `${counts.reduce((a, b) => a + b, 0)} temuan pada grafik (1 inspeksi bisa >1 temuan)`;
 
         renderChart(counts);
         renderComplianceChart(start, end, rak);
@@ -444,7 +446,6 @@
     }
 
     const isSunday = ymd => new Date(ymd + 'T00:00:00Z').getUTCDay() === 0;
-    
     function expectedReports(start, end) {
         const today = toYMD(new Date());
         const dates = rows.map(r => r.ymd).filter(Boolean).sort();
@@ -457,23 +458,18 @@
         return workdays;
     }
 
-    // Fungsi Kepatuhan yang diperbarui (Rak sudah diinspeksi vs Total)
     function renderComplianceChart(start, end, rak) {
-        const targetRaks = rak === 'ALL' ? rakNames : [rak];
-        const totalRaks = targetRaks.length;
-        
-        const checkedRaks = new Set();
-        rows.forEach(r => {
-            if (targetRaks.includes(r.rak) && inRange(r, start, end)) {
-                checkedRaks.add(r.rak);
-            }
+        const expected = expectedReports(start, end);
+        const scopedRows = rows.filter(r => (rak === 'ALL' || r.rak === rak) && inRange(r, start, end));
+        const daysDoneSet = new Set();
+        scopedRows.forEach(r => {
+            if (r.ymd && !isSunday(r.ymd)) daysDoneSet.add(r.ymd);
         });
-        
-        const doneRaksCount = checkedRaks.size;
-        const pct = totalRaks > 0 ? Math.min(100, Math.round((doneRaksCount / totalRaks) * 100)) : 0;
+        const actualDays = daysDoneSet.size;
+        const pct = expected > 0 ? Math.min(100, Math.round((actualDays / expected) * 100)) : 0;
         const remainder = Math.max(0, 100 - pct);
 
-        $('compliance-badge').textContent = pct + '\%';$('compliance-desc').textContent = doneRaksCount + ' dari ' + totalRaks + ' area sudah diinspeksi';
+        $('compliance-badge').textContent = pct + '%';$('compliance-desc').textContent = `Tercapai ${actualDays} dari ${expected} hari kerja`;
 
         const ctx = $('complianceChart').getContext('2d');
         if (complianceChart) {
@@ -485,7 +481,7 @@
         complianceChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Sudah Dicek (%)', 'Belum Dicek (%)'],
+                labels: ['Tercapai (%)', 'Belum (%)'],
                 datasets: [{
                     data: [pct, remainder],
                     backgroundColor: ['#10b981', '#f1f5f9'],
@@ -494,10 +490,17 @@
                 }]
             },
             options: {
-                responsive: true, maintainAspectRatio: false,
+                responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: function(c) { return c.dataIndex === 0 ? ' Sudah Dicek: ' + pct + '%' : ' Belum Dicek: ' + remainder + '%'; } } }
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataIndex === 0 ? ` Capaian: ${pct}%` : ` Sisa: ${remainder}%`;
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -512,17 +515,18 @@
             if (r.ymd && !isSunday(r.ymd)) daysDone[r.rak].add(r.ymd);
         });
         const expected = expectedReports(start, end);
-        const sorted = rakNames.map(name => ({ name, count: counts[name], days: daysDone[name].size })).sort((a, b) => b.days - a.days || b.count - a.count);
+        const sorted = rakNames.map(name => ({ name, count: counts[name], days: daysDone[name].size }))
+            .sort((a, b) => b.days - a.days || b.count - a.count);
         const pctOf = it => expected ? Math.min(100, Math.round(it.days / expected * 100)) : 0;
         const belum = sorted.filter(it => it.count === 0).length;
         const kurang = sorted.filter(it => it.count > 0 && pctOf(it) < 40).length;
         const parts = [];
-        if (belum) parts.push(belum + ' PIC belum lapor');
-        if (kurang) parts.push(kurang + ' kurang aktif');
+        if (belum) parts.push(`${belum} PIC belum lapor`);
+        if (kurang) parts.push(`${kurang} kurang aktif`);
         $('leaderboard-summary').textContent = !sorted.length ? '' : (parts.length ? '⚠ ' + parts.join(' · ') : (expected ? '✔ Semua PIC aktif' : ''));
         const tbody = $('leaderboard-body');
         tbody.innerHTML = '';
-        if (!sorted.length) { tbody.innerHTML = emptyRow(4, 'Belum ada data.'); return; }
+        if (!sorted.length) { tbody.innerHTML = emptyRow(4, 'Belum ada data leaderboard.'); return; }
 
         let rank = 0;
         sorted.forEach((item, i) => {
@@ -533,17 +537,21 @@
             else if (pct < 40) badge = ['bg-red-50 text-red-600', 'Kurang Aktif'];
             else if (pct < 80) badge = ['bg-amber-50 text-amber-700', 'Cukup Aktif'];
 
-            const rankBadge = rank === 1 ? '<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold text-xs">🥇 #1</span>'
-                : rank === 2 ? '<span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded-full font-bold text-xs">🥈 #2</span>'
-                : rank === 3 ? '<span class="bg-amber-50 text-amber-900 px-2 py-0.5 rounded-full font-bold text-xs">🥉 #3</span>'
-                : '<span class="font-bold text-slate-500">#' + rank + '</span>';
+            const rankBadge = rank === 1 ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold text-xs">🥇 #1</span>`
+                : rank === 2 ? `<span class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded-full font-bold text-xs">🥈 #2</span>`
+                : rank === 3 ? `<span class="bg-amber-50 text-amber-900 px-2 py-0.5 rounded-full font-bold text-xs">🥉 #3</span>`
+                : `<span class="font-bold text-slate-500">#${rank}</span>`;
 
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-blue-50/50 cursor-pointer transition';
-            tr.innerHTML = '<td class="p-4 pl-6 text-center">' + rankBadge + '</td>' +
-                '<td class="p-4 font-semibold text-slate-800 text-xs"><div class="flex items-center justify-between gap-2"><span>' + esc(item.name) + '</span><span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold no-print">Klik Detail</span></div></td>' +
-                '<td class="p-4 text-center font-bold text-blue-600">' + item.count + ' Laporan</td>' +
-                '<td class="p-4 pr-6 text-center"><span class="text-xs px-2.5 py-1 rounded-full font-semibold ' + badge[0] + '">' + badge[1] + (expected ? ' · ' + item.days + '/' + expected + ' hari (' + pct + '%)' : '') + '</span></td>';
+            tr.innerHTML = `
+                <td class="p-4 pl-6 text-center">${rankBadge}</td>
+                <td class="p-4 font-semibold text-slate-800 text-xs">
+                    <div class="flex items-center justify-between gap-2"><span>${esc(item.name)}</span>
+                    <span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold no-print">Klik Detail</span></div>
+                </td>
+                <td class="p-4 text-center font-bold text-blue-600">${item.count} Laporan</td>
+                <td class="p-4 pr-6 text-center"><span class="text-xs px-2.5 py-1 rounded-full font-semibold ${badge[0]}">${badge[1]}${expected ? ` · ${item.days}/${expected} hari (${pct}%)` : ''}</span></td>`;
             tr.addEventListener('click', () => openPicDetail(item.name));
             tbody.appendChild(tr);
         });
@@ -553,23 +561,23 @@
         const target = $('checkDate').value;
         const box = $('unchecked-list');
         if (!target || !rakNames.length) {
-            box.innerHTML = '<p class="text-center text-slate-400 italic py-4">' + (rows.length ? 'Pilih tanggal pengecekan.' : 'Belum ada data.') + '</p>';
+            box.innerHTML = `<p class="text-center text-slate-400 italic py-4">${rows.length ? 'Pilih tanggal pengecekan.' : 'Belum ada data.'}</p>`;
             return;
         }
         const done = new Set(rows.filter(r => r.ymd === target).map(r => r.rak));
         const unchecked = rakNames.filter(n => !done.has(n));
         box.innerHTML = unchecked.length === 0
-            ? '<div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-medium">Luar biasa! Semua area sudah diinspeksi pada tanggal ini.</div>'
-            : '<p class="text-xs font-bold text-red-600 mb-2">Total Area Belum di Inspeksi (' + unchecked.length + '):</p>' +
-              '<ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">' + unchecked.map(n => '<li><span class="font-semibold text-slate-900">' + esc(n) + '</span></li>').join('') + '</ul>';
+            ? `<div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-medium">Luar biasa! Semua area sudah diinspeksi pada tanggal ini.</div>`
+            : `<p class="text-xs font-bold text-red-600 mb-2">Total Area Belum di Inspeksi (${unchecked.length}):</p>
+               <ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">${unchecked.map(n => `<li><span class="font-semibold text-slate-900">${esc(n)}</span></li>`).join('')}</ul>`;
     }
 
     function openModal({ title, sub, cols, body, wide }) {
         $('modal-title').textContent = title;
-        $('modal-sub').textContent = sub \vert{}\vert{} '';$('modal-box').className = 'bg-white rounded-2xl w-full ' + (wide ? 'max-w-5xl' : 'max-w-3xl') + ' max-h-[85vh] flex flex-col shadow-2xl overflow-hidden';
-        $('modal-head').innerHTML = cols.map((c, i) => '<th class="p-3 ' + (i === 0 ? 'pl-6' : '') + ' font-semibold">' + c + '</th>').join('');
+        $('modal-sub').textContent = sub || '';$('modal-box').className = `bg-white rounded-2xl w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'} max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`;
+        $('modal-head').innerHTML = cols.map((c, i) => `<th class="p-3 ${i === 0 ? 'pl-6' : ''} font-semibold">${c}</th>`).join('');
         $('modal-body').innerHTML = body;
-        $('modal').classList.remove('hidden');
+        $('modal').classList.remove('hidden');$('modal-close').focus();
     }
     function closeModal() { $('modal').classList.add('hidden'); }
     $('modal').addEventListener('click', e => { if (e.target ===$('modal')) closeModal(); });
@@ -588,21 +596,21 @@
         const { start, end } = getFilters();
         const list = sortDesc(rows.filter(r => r.rak === rakName && inRange(r, start, end)));
         openModal({
-            title: 'Detail Laporan: ' + rakName, sub: 'Riwayat inspeksi pada rentang tanggal terpilih',
+            title: `Detail Laporan: ${rakName}`, sub: 'Riwayat inspeksi pada rentang tanggal terpilih',
             cols: HIST_COLS, wide: true,
-            body: list.length ? list.map(r => histRow(r, false)).join('') : emptyRow(6, 'Tidak ada riwayat laporan.')
+            body: list.length ? list.map(r => histRow(r, false)).join('') : emptyRow(6, 'Tidak ada riwayat laporan untuk PIC ini pada rentang tanggal tersebut.')
         });
     }
-    const defectRows = list => list.map(x => '<tr class="hover:bg-red-50/30 transition">' +
-        '<td class="p-3 pl-6 font-semibold text-xs text-slate-700">' + esc(x.r.rak) + '</td>' +
-        '<td class="p-3 font-medium whitespace-nowrap">' + esc(x.r.ymd || disp(x.r.tanggal)) + '</td>' +
-        '<td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">' + esc(disp(x.r.shift)) + '</span></td>' +
-        '<td class="p-3 pr-6 text-red-600 font-semibold">' + esc(x.issues.join(', ')) + '</td></tr>').join('');
+    const defectRows = list => list.map(x => `<tr class="hover:bg-red-50/30 transition">
+        <td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(x.r.rak)}</td>
+        <td class="p-3 font-medium whitespace-nowrap">${esc(x.r.ymd || disp(x.r.tanggal))}</td>
+        <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${esc(disp(x.r.shift))}</span></td>
+        <td class="p-3 pr-6 text-red-600 font-semibold">${esc(x.issues.join(', '))}</td></tr>`).join('');
 
     function openSemuaTemuanModal() {
         const list = sortDesc(state.defects.map(x => x.r)).map(r => state.defects.find(x => x.r === r));
         openModal({
-            title: 'Detail Inspeksi Bermasalah (' + $('label-bulan-berjalan').textContent + ')',
+            title: `Detail Inspeksi Bermasalah (${$('label-bulan-berjalan').textContent})`,
             sub: 'Inspeksi dengan ketidaksesuaian pada rak & rentang tanggal terpilih',
             cols: ['Rak / PIC', 'Tanggal', 'Shift', 'Jenis Temuan Masalah'],
             body: list.length ? defectRows(list) : emptyRow(4, 'Tidak ada riwayat temuan masalah pada rentang tanggal ini.')
@@ -612,7 +620,7 @@
         const d = DEFECTS[index];
         const list = sortDesc(state.ranged.filter(d.test)).map(r => ({ r, issues: [d.label] }));
         openModal({
-            title: 'Detail Riwayat: ' + d.label, sub: 'Daftar inspeksi kategori ini pada rak & rentang tanggal terpilih',
+            title: `Detail Riwayat: ${d.label}`, sub: 'Daftar inspeksi kategori ini pada rak & rentang tanggal terpilih',
             cols: ['Rak / PIC', 'Tanggal', 'Shift', 'Status Keterangan'],
             body: list.length ? defectRows(list) : emptyRow(4, 'Tidak ada riwayat temuan untuk kategori ini pada rentang tanggal tersebut.')
         });
@@ -621,19 +629,19 @@
     function exportToCSV() {
         const list = sortDesc(state.ranged);
         if (!list.length) { showMsg('Tidak ada data untuk diexport pada filter ini.', 'err'); return; }
-        const cell = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+        const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
         const lines = [['Rak / PIC', 'Tanggal', 'Shift', 'Pallet Rusak', 'Segel Baik', 'Produk Penyok', 'Label Baik'].map(cell).join(',')];
         list.forEach(r => lines.push([r.rak, r.ymd || r.tanggal, r.shift, r.pallet, r.segel, r.penyok, r.label].map(cell).join(',')));
         const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'laporan_monitoring_racking_' + toYMD(new Date()) + '.csv';
+        a.download = `laporan_monitoring_racking_${toYMD(new Date())}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showMsg(list.length + ' baris diunduh.', 'ok');
+        showMsg(`${list.length} baris diunduh (sesuai filter aktif).`, 'ok');
     }
 
     (function init() {
