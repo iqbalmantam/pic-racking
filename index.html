@@ -130,7 +130,7 @@
                     <h2 class="text-base font-bold text-slate-800">Capaian Kepatuhan</h2>
                     <span id="compliance-badge" class="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded">0%</span>
                 </div>
-                <p class="text-xs text-slate-400 mb-2">Persentase hari terlapor vs hari kerja (Bulan Berjalan)</p>
+                <p id="compliance-sub" class="text-xs text-slate-400 mb-2">Persentase rak yang sudah dicek</p>
             </div>
             <div class="relative h-52 w-full flex items-center justify-center my-2">
                 <canvas id="complianceChart"></canvas>
@@ -459,17 +459,26 @@
     }
 
     function renderComplianceChart(start, end, rak) {
-        const expected = expectedReports(start, end);
-        const scopedRows = rows.filter(r => (rak === 'ALL' || r.rak === rak) && inRange(r, start, end));
-        const daysDoneSet = new Set();
-        scopedRows.forEach(r => {
-            if (r.ymd && !isSunday(r.ymd)) daysDoneSet.add(r.ymd);
-        });
-        const actualDays = daysDoneSet.size;
-        const pct = expected > 0 ? Math.min(100, Math.round((actualDays / expected) * 100)) : 0;
+        let pct, desc, sub;
+        if (rak === 'ALL') {
+            // Semua rak: persentase rak (PIC) yang sudah punya laporan/dicek pada rentang terpilih
+            const total = rakNames.length;
+            const checked = new Set(rows.filter(r => inRange(r, start, end) && rakNames.includes(r.rak)).map(r => r.rak)).size;
+            pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+            desc = `${checked} dari ${total} rak sudah dicek`;
+            sub = 'Persentase rak yang sudah dicek pada periode terpilih';
+        } else {
+            // Satu rak: persentase hari kerja yang sudah ada laporan
+            const expected = expectedReports(start, end);
+            const days = new Set(rows.filter(r => r.rak === rak && inRange(r, start, end) && r.ymd && !isSunday(r.ymd)).map(r => r.ymd));
+            pct = expected > 0 ? Math.min(100, Math.round((days.size / expected) * 100)) : 0;
+            desc = `Tercapai ${days.size} dari ${expected} hari kerja`;
+            sub = 'Persentase hari terlapor vs hari kerja pada periode terpilih';
+        }
         const remainder = Math.max(0, 100 - pct);
-
-        $('compliance-badge').textContent = pct + '%';$('compliance-desc').textContent = `Tercapai ${actualDays} dari ${expected} hari kerja`;
+        $('compliance-badge').textContent = pct + '%';
+        $('compliance-desc').textContent = desc;
+        $('compliance-sub').textContent = sub;
 
         const ctx = $('complianceChart').getContext('2d');
         if (complianceChart) {
