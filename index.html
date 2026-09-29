@@ -109,14 +109,34 @@
         </div>
     </div>
 
-    <!-- Grafik -->
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
-        <div class="flex justify-between items-start mb-1">
-            <h2 class="text-base font-bold text-slate-800">Komparasi Jenis Temuan Masalah</h2>
-            <span class="no-print text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded">Klik Batang Grafik untuk Detail</span>
+    <!-- Grid Grafik (Komparasi Temuan & Grafik Persentase Bulan Berjalan) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <!-- Grafik Temuan (2 Kolom) -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-start mb-1">
+                    <h2 class="text-base font-bold text-slate-800">Komparasi Jenis Temuan Masalah</h2>
+                    <span class="no-print text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded">Klik Batang Grafik untuk Detail</span>
+                </div>
+                <p class="text-xs text-slate-400 mb-4">Akumulasi ketidaksesuaian standar pada rak & rentang tanggal terpilih</p>
+            </div>
+            <div class="relative h-64 w-full"><canvas id="defectChart"></canvas></div>
         </div>
-        <p class="text-xs text-slate-400 mb-4">Akumulasi ketidaksesuaian standar pada rak & rentang tanggal terpilih</p>
-        <div class="relative h-72 w-full"><canvas id="defectChart"></canvas></div>
+
+        <!-- Grafik Persentase Bulan Berjalan (1 Kolom) -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-start mb-1">
+                    <h2 class="text-base font-bold text-slate-800">Capaian Kepatuhan</h2>
+                    <span id="compliance-badge" class="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded">0%</span>
+                </div>
+                <p class="text-xs text-slate-400 mb-2">Persentase hari terlapor vs hari kerja (Bulan Berjalan)</p>
+            </div>
+            <div class="relative h-52 w-full flex items-center justify-center my-2">
+                <canvas id="complianceChart"></canvas>
+            </div>
+            <div id="compliance-desc" class="text-center text-xs text-slate-500 font-medium mt-1">Menghitung data...</div>
+        </div>
     </div>
 
     <!-- Rak belum dicek -->
@@ -183,7 +203,7 @@
     </div>
 </div>
 
-<!-- MODAL UMUM (dipakai semua popup) -->
+<!-- MODAL UMUM -->
 <div id="modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div id="modal-box" class="bg-white rounded-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -206,13 +226,10 @@
 </div>
 
 <script>
-    // ================= KONFIGURASI =================
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxbO6R40dq3NbNo6jE5FRV3wQbysvvk74suPLmu2EhojEjWIIZkqh4j_N57v9HGTeteTQ/exec";
-    // Opsional: isi token sederhana; GAS harus memeriksa e.parameter.token agar berfungsi.
     const GAS_TOKEN = "";
     const TZ = "Asia/Jakarta";
 
-    // ================= HELPER =================
     const $ = id => document.getElementById(id);
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const norm = v => String(v ?? '').trim().toLowerCase();
@@ -222,7 +239,6 @@
     const addDays = (ymd, n) => { const d = new Date(ymd + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
     const hhmm = d => d.toLocaleTimeString('id-ID', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
 
-    // Normalisasi ke 'YYYY-MM-DD' (zona WIB untuk timestamp UTC)
     function normalizeDate(raw) {
         if (raw == null || raw === '') return null;
         if (raw instanceof Date) return isNaN(raw) ? null : toYMD(raw);
@@ -236,30 +252,28 @@
             if (a.length === 4) return `${a}-${b.padStart(2, '0')}-${c.padStart(2, '0')}`;
             const year = c.length === 2 ? '20' + c : c;
             let day = a, month = b;
-            if (parseInt(b, 10) > 12) { month = a; day = b; }   // format mm/dd/yyyy
+            if (parseInt(b, 10) > 12) { month = a; day = b; }
             return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
         }
         const d = new Date(s);
         return isNaN(d) ? null : toYMD(d);
     }
 
-    // Definisi 4 jenis temuan
     const YES = ['ya', 'true', 'yes', 'y'], NO = ['tidak', 'false', 'no', 'n'];
     const DEFECTS = [
-        { label: 'Pallet Rusak',     test: r => YES.includes(norm(r.pallet)) },
+        { label: 'Pallet Rusak',    test: r => YES.includes(norm(r.pallet)) },
         { label: 'Segel Tidak Baik', test: r => NO.includes(norm(r.segel)) },
         { label: 'Produk Penyok',    test: r => YES.includes(norm(r.penyok)) },
         { label: 'Label Tidak Baik', test: r => NO.includes(norm(r.label)) }
     ];
     const issuesOf = r => DEFECTS.filter(d => d.test(r)).map(d => d.label);
 
-    // ================= STATE =================
-    let rows = [];          // {rak, ymd, tanggal, shift, pallet, segel, penyok, label}
+    let rows = [];
     let rakNames = [];
     let chart = null;
+    let complianceChart = null;
     let state = { ranged: [], defects: [], scoped: [] };
 
-    // ================= PESAN =================
     let msgTimer;
     function showMsg(text, type = 'info', auto = true) {
         const el = $('msg');
@@ -277,7 +291,6 @@
         b.className = `text-xs font-medium px-2 py-0.5 rounded-full ${cls}`;
     }
 
-    // ================= AMBIL DATA =================
     async function fetchData(sync) {
         const p = new URLSearchParams();
         if (sync) p.set('action', 'sync');
@@ -288,7 +301,6 @@
         return res.json();
     }
 
-    // Menerima array [header, ...baris] atau objek {data:[...], raks:[...]} (daftar master rak opsional dari GAS)
     function processMasterData(data) {
         const raw = Array.isArray(data) ? data : (data && data.data);
         if (!Array.isArray(raw)) throw new Error('Format data tidak dikenali');
@@ -310,8 +322,7 @@
         select.value = rakNames.includes(current) ? current : 'ALL';
 
         $('sync-time').textContent = 'Terakhir sinkron: ' + hhmm(new Date());
-        $('sync-time').className = 'text-sm font-bold text-emerald-600';
-        $('rak-count').textContent = rakNames.length + ' rak';
+        $('sync-time').className = 'text-sm font-bold text-emerald-600';$('rak-count').textContent = rakNames.length + ' rak';
         setBadge('✔ Sinkron ' + hhmm(new Date()), 'bg-emerald-50 text-emerald-600');
     }
 
@@ -351,9 +362,8 @@
         }
     }
 
-    // ================= FILTER =================
     function getFilters() {
-        return { rak: $('rakSelect').value || 'ALL', start: $('startDate').value, end: $('endDate').value };
+        return { rak: $('rakSelect').value || 'ALL', start: $('startDate').value, end:$('endDate').value };
     }
     function inRange(r, start, end) {
         if (!r.ymd) return !start && !end;
@@ -369,7 +379,6 @@
     }
     function resetDateFilter() { setRange('', ''); refresh(); }
 
-    // ================= RENDER UTAMA =================
     function sortDesc(list) {
         return list.map((r, i) => [r, i])
             .sort((a, b) => (b[0].ymd || '').localeCompare(a[0].ymd || '') || b[1] - a[1])
@@ -391,18 +400,14 @@
         const scoped = rows.filter(r => rak === 'ALL' || r.rak === rak);
         const ranged = scoped.filter(r => inRange(r, start, end));
 
-        // Label tampilan
         $('pic-name').textContent = rak === 'ALL' ? '🌐 Summary Keseluruhan Gudang' : (rak.split(' - ')[1] || rak);
-        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] || rak);
-        $('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
+        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] \vert{}\vert{} rak);$('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
 
-        // KPI
         $('total-inspeksi').textContent = scoped.length;
         const latest = sortDesc(scoped)[0];
         $('last-date').textContent = latest ? (latest.ymd || disp(latest.tanggal)) : '-';
         $('last-shift').textContent = latest ? disp(latest.shift) : '-';
 
-        // Label periode
         let periode = 'Semua Periode';
         if (start && end) {
             const s = new Date(start + 'T00:00:00Z'), e = new Date(end + 'T00:00:00Z');
@@ -411,7 +416,6 @@
         } else if (start || end) periode = 'Rentang Filter';
         $('label-bulan-berjalan').textContent = periode;
 
-        // Temuan
         const counts = DEFECTS.map(d => ranged.filter(d.test).length);
         const defects = ranged.map(r => ({ r, issues: issuesOf(r) })).filter(x => x.issues.length);
         state = { ranged, defects, scoped };
@@ -419,9 +423,9 @@
         $('count-temuan-total').textContent = `${counts.reduce((a, b) => a + b, 0)} temuan pada grafik (1 inspeksi bisa >1 temuan)`;
 
         renderChart(counts);
+        renderComplianceChart(start, end, rak);
         renderLeaderboard(start, end);
 
-        // Tabel 5 terbaru
         const top5 = sortDesc(scoped).slice(0, 5);
         $('table-body').innerHTML = top5.length ? top5.map(r => histRow(r)).join('') : emptyRow(7, 'Belum ada data tersedia.');
     }
@@ -444,11 +448,11 @@
         });
     }
 
-    // ================= LEADERBOARD =================
+    const isSunday = ymd => new Date(ymd + 'T00:00:00Z').getUTCDay() === 0;
     function expectedReports(start, end) {
         const today = toYMD(new Date());
         const dates = rows.map(r => r.ymd).filter(Boolean).sort();
-        const s = start || dates[0];
+        const s = start || (dates.length ? dates[0] : today);
         let e = end || today;
         if (e > today) e = today;
         if (!s || s > e) return 0;
@@ -456,7 +460,54 @@
         for (let d = s; d <= e; d = addDays(d, 1)) if (!isSunday(d)) workdays++;
         return workdays;
     }
-    const isSunday = ymd => new Date(ymd + 'T00:00:00Z').getUTCDay() === 0;
+
+    function renderComplianceChart(start, end, rak) {
+        const expected = expectedReports(start, end);
+        const scopedRows = rows.filter(r => (rak === 'ALL' || r.rak === rak) && inRange(r, start, end));
+        const daysDoneSet = new Set();
+        scopedRows.forEach(r => {
+            if (r.ymd && !isSunday(r.ymd)) daysDoneSet.add(r.ymd);
+        });
+        const actualDays = daysDoneSet.size;
+        const pct = expected > 0 ? Math.min(100, Math.round((actualDays / expected) * 100)) : 0;
+        const remainder = Math.max(0, 100 - pct);
+
+        $('compliance-badge').textContent = pct + '\%';$('compliance-desc').textContent = `Tercapai ${actualDays} dari ${expected} hari kerja`;
+
+        const ctx = $('complianceChart').getContext('2d');
+        if (complianceChart) {
+            complianceChart.data.datasets[0].data = [pct, remainder];
+            complianceChart.update();
+            return;
+        }
+
+        complianceChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Tercapai (%)', 'Belum (%)'],
+                datasets: [{
+                    data: [pct, remainder],
+                    backgroundColor: ['#10b981', '#f1f5f9'],
+                    borderWidth: 0,
+                    cutout: '75%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataIndex === 0 ? ` Capaian: ${pct}%` : ` Sisa: ${remainder}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 
     function renderLeaderboard(start, end) {
         const counts = Object.fromEntries(rakNames.map(n => [n, 0]));
@@ -482,7 +533,7 @@
 
         let rank = 0;
         sorted.forEach((item, i) => {
-            if (i === 0 || item.count !== sorted[i - 1].count || item.days !== sorted[i - 1].days) rank = i + 1;   // skor sama = rank sama
+            if (i === 0 || item.count !== sorted[i - 1].count || item.days !== sorted[i - 1].days) rank = i + 1;
             const pct = expected ? Math.min(100, Math.round(item.days / expected * 100)) : 0;
             let badge = ['bg-emerald-50 text-emerald-700', 'Sangat Aktif'];
             if (item.count === 0) badge = ['bg-red-50 text-red-600', 'Belum Lapor'];
@@ -509,7 +560,6 @@
         });
     }
 
-    // ================= RAK BELUM DICEK =================
     function checkUncheckedRaks() {
         const target = $('checkDate').value;
         const box = $('unchecked-list');
@@ -525,18 +575,15 @@
                <ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">${unchecked.map(n => `<li><span class="font-semibold text-slate-900">${esc(n)}</span></li>`).join('')}</ul>`;
     }
 
-    // ================= MODAL =================
     function openModal({ title, sub, cols, body, wide }) {
         $('modal-title').textContent = title;
-        $('modal-sub').textContent = sub || '';
-        $('modal-box').className = `bg-white rounded-2xl w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'} max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`;
+        $('modal-sub').textContent = sub \vert{}\vert{} '';$('modal-box').className = `bg-white rounded-2xl w-full ${wide ? 'max-w-5xl' : 'max-w-3xl'} max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`;
         $('modal-head').innerHTML = cols.map((c, i) => `<th class="p-3 ${i === 0 ? 'pl-6' : ''} font-semibold">${c}</th>`).join('');
         $('modal-body').innerHTML = body;
-        $('modal').classList.remove('hidden');
-        $('modal-close').focus();
+        $('modal').classList.remove('hidden');$('modal-close').focus();
     }
     function closeModal() { $('modal').classList.add('hidden'); }
-    $('modal').addEventListener('click', e => { if (e.target === $('modal')) closeModal(); });
+    $('modal').addEventListener('click', e => { if (e.target ===$('modal')) closeModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
     const HIST_COLS = ['Tanggal', 'Shift', 'Pallet Rusak', 'Segel Baik', 'Produk Penyok', 'Label Baik'];
@@ -582,7 +629,6 @@
         });
     }
 
-    // ================= EXPORT =================
     function exportToCSV() {
         const list = sortDesc(state.ranged);
         if (!list.length) { showMsg('Tidak ada data untuk diexport pada filter ini.', 'err'); return; }
@@ -601,7 +647,6 @@
         showMsg(`${list.length} baris diunduh (sesuai filter aktif).`, 'ok');
     }
 
-    // ================= INISIALISASI =================
     (function init() {
         const today = toYMD(new Date());
         $('checkDate').value = today;
