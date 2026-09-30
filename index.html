@@ -132,8 +132,7 @@
                         <span id="compliance-views" class="no-print inline-flex rounded-lg bg-slate-100 p-0.5 text-[11px] font-semibold">
                             <button type="button" data-view="line" onclick="setComplianceView('line')" class="px-3 py-1 rounded-md">📈 Garis</button>
                             <button type="button" data-view="bar" onclick="setComplianceView('bar')" class="px-3 py-1 rounded-md">📊 Batang</button>
-                            <button type="button" data-view="heat" onclick="setComplianceView('heat')" class="px-3 py-1 rounded-md">🟩 Heatmap</button>
-                            <button type="button" data-view="denah" onclick="setComplianceView('denah')" class="px-3 py-1 rounded-md">🗺️ Denah</button>
+                            <button type="button" data-view="heat" onclick="setComplianceView('heat')" class="px-3 py-1 rounded-md">🗺️ Heatmap</button>
                         </span>
                         <span id="compliance-badge" class="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded">0%</span>
                     </span>
@@ -472,7 +471,8 @@
     let complianceCtx = { dates: [], rak: 'ALL' };
     let complianceView = 'line';
     try { complianceView = localStorage.getItem('complianceView') || 'line'; } catch (e) {}
-    if (!['line', 'bar', 'heat', 'denah'].includes(complianceView)) complianceView = 'line';
+    if (complianceView === 'denah') complianceView = 'heat';
+    if (!['line', 'bar', 'heat'].includes(complianceView)) complianceView = 'line';
 
     function setComplianceView(v) {
         complianceView = v;
@@ -519,11 +519,11 @@
             const on = b.dataset.view === complianceView;
             b.className = 'px-3 py-1 rounded-md transition ' + (on ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700');
         });
-        const heat = complianceView === 'heat' || complianceView === 'denah';
+        const heat = complianceView === 'heat';
         $('compliance-canvas-wrap').classList.toggle('hidden', heat);
         $('compliance-heat').classList.toggle('hidden', !heat);
         if (complianceChart) { complianceChart.destroy(); complianceChart = null; }
-        if (heat) { complianceView === 'denah' ? drawComplianceDenah() : drawComplianceHeatmap(); return; }
+        if (heat) { drawComplianceDenah(); return; }
 
         const isLine = complianceView === 'line';
         const ds = [{
@@ -562,32 +562,6 @@
             }
         });
     }
-
-    function drawComplianceHeatmap() {
-        const { dates, names, byDate } = complianceCtx;
-        const box = $('compliance-heat');
-        if (!dates.length || !names.length) { box.innerHTML = '<p class="text-center text-xs text-slate-400 py-10">Belum ada data pada rentang ini.</p>'; return; }
-        const items = names.map(n => {
-            const done = dates.filter(d => byDate[d] && byDate[d].has(n)).length;
-            return { n, done, pct: Math.round(done / dates.length * 100) };
-        });
-        const head = dates.map(d => `<th class="px-0.5 pb-1 text-[9px] font-medium text-slate-400 text-center" title="${d}">${d.slice(8)}</th>`).join('');
-        const bodyRows = items.map(x => {
-            const cells = dates.map(d => {
-                const ok = byDate[d] && byDate[d].has(x.n);
-                return `<td class="p-0.5"><button type="button" onclick="showComplianceDetail('${d}')" title="${esc(x.n)} • ${d} • ${ok ? 'Sudah dicek' : 'Belum dicek'}" class="block w-full min-w-[14px] h-5 rounded-sm ${ok ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-200 hover:bg-red-300'}"></button></td>`;
-            }).join('');
-            return `<tr><td class="sticky left-0 bg-white z-10 pr-3 py-0.5 text-[11px] text-slate-700 font-medium whitespace-nowrap">${esc(x.n)}</td>${cells}<td class="pl-3 text-[11px] font-bold text-right" style="color:${pctColor(x.pct)}">${x.pct}%</td></tr>`;
-        }).join('');
-        box.innerHTML = `<div class="overflow-auto max-h-[28rem] border border-slate-100 rounded-xl p-3">
-            <table class="border-separate border-spacing-0"><thead><tr><th class="sticky left-0 bg-white z-10"></th>${head}<th class="pl-3 pb-1 text-[9px] font-medium text-slate-400 text-right">Hari</th></tr></thead><tbody>${bodyRows}</tbody></table></div>
-            <div class="flex items-center justify-center gap-4 mt-2 text-[10px] text-slate-500">
-                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-emerald-500"></span>Sudah dicek</span>
-                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-red-200"></span>Belum dicek</span>
-                <span>Angka kanan = % hari terlapor</span>
-            </div>`;
-    }
-
 
     // ===== Denah rak (tata letak dari Master_location_JDC.xlsx) =====
     // Blok A dan B sejajar (A di atas, B di bawah), lalu blok C dan D setinggi penuh.
