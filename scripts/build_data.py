@@ -31,6 +31,11 @@ WIB = timezone(timedelta(hours=7))
 UA = {"User-Agent": "Mozilla/5.0 (pic-racking data builder)"}
 
 
+def rak_key(name):
+    """Kunci rak tanpa nama PIC: 'Rak A01 - Arik' -> 'Rak A01'. PIC boleh berganti, rak tetap."""
+    return str(name).split(" - ")[0].strip()
+
+
 def http_get(url, retries=3, timeout=60):
     last = None
     for i in range(retries):
@@ -151,7 +156,7 @@ def main():
         try:
             old = json.loads(OUT.read_text(encoding="utf-8"))
             for row in old.get("data", [])[1:]:
-                previous.setdefault(row[0], []).append(row)
+                previous.setdefault(rak_key(row[0]), []).append(row)
         except Exception:
             pass
 
@@ -161,7 +166,8 @@ def main():
         for name, rows, err in ex.map(load_source, SOURCES):
             if rows is None:
                 failed.append((name, err))
-                rows = previous.get(name, [])       # pertahankan data lama untuk rak ini
+                # pertahankan data lama untuk rak ini (dicocokkan lewat kode rak, bukan nama PIC)
+                rows = [[name] + r[1:] for r in previous.get(rak_key(name), [])]
                 print(f"[GAGAL] {name}: {err} (memakai {len(rows)} baris lama)", file=sys.stderr)
             else:
                 print(f"[OK]    {name}: {len(rows)} baris")

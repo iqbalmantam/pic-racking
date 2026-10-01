@@ -277,7 +277,10 @@
     const issuesOf = r => DEFECTS.filter(d => d.test(r)).map(d => d.label);
 
     let rows = [];
-    let rakNames = [];
+    let rakNames = [];      // kunci rak saja, mis. "Rak A01" (tanpa nama PIC)
+    let picByRak = {};      // kunci rak -> nama PIC terkini (hanya untuk label tampilan)
+    const rakKey = n => String(n).split(' - ')[0].trim();
+    const rakLabel = k => picByRak[k] ? `${k} - ${picByRak[k]}` : k;
     let chart = null;
     let complianceChart = null;
     let state = { ranged: [], defects: [], scoped: [] };
@@ -312,19 +315,25 @@
         if (!Array.isArray(raw)) throw new Error('Format data tidak dikenali');
         const masterRaks = (!Array.isArray(data) && Array.isArray(data.raks)) ? data.raks : [];
 
+        // Rak diidentifikasi dari kode rak saja; nama PIC hanya label dan boleh berganti kapan saja.
+        picByRak = {};
+        const setPic = full => { const p = String(full).split(' - ')[1]; if (p) picByRak[rakKey(full)] = p.trim(); };
+        raw.slice(1).forEach(r => { if (Array.isArray(r) && r[0]) setPic(r[0]); });
+        masterRaks.forEach(setPic);   // daftar master (sources.json) menang atas nama lama di baris data
+
         rows = raw.slice(1).filter(r => Array.isArray(r) && r[0]).map(r => ({
-            rak: String(r[0]), ymd: normalizeDate(r[2]), tanggal: r[2],
+            rak: rakKey(r[0]), ymd: normalizeDate(r[2]), tanggal: r[2],
             shift: r[3], pallet: r[4], segel: r[5], penyok: r[6], label: r[7]
         }));
 
-        const set = new Set(masterRaks.map(String));
+        const set = new Set(masterRaks.map(rakKey));
         rows.forEach(r => set.add(r.rak));
         rakNames = [...set];
 
         const select = $('rakSelect');
         const current = select.value;
         select.innerHTML = '<option value="ALL">🌐 SEMUA RAK (SUMMARY KESELURUHAN)</option>' +
-            rakNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+            rakNames.map(n => `<option value="${esc(n)}">${esc(rakLabel(n))}</option>`).join('');
         select.value = rakNames.includes(current) ? current : 'ALL';
 
         $('sync-time').textContent = 'Terakhir sinkron: ' + hhmm(new Date());
@@ -393,7 +402,7 @@
     const flagTd = (v, bad, extra = 'p-3') => `<td class="${extra} text-center ${bad ? 'text-red-600 font-semibold' : ''}">${esc(disp(v))}</td>`;
     function histRow(r, showRak = true) {
         return `<tr class="hover:bg-slate-50 transition">
-            ${showRak ? `<td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(r.rak)}</td>` : ''}
+            ${showRak ? `<td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(rakLabel(r.rak))}</td>` : ''}
             <td class="p-3 ${showRak ? '' : 'pl-6 '}font-medium whitespace-nowrap">${esc(r.ymd || disp(r.tanggal))}</td>
             <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-medium">${esc(disp(r.shift))}</span></td>
             ${flagTd(r.pallet, DEFECTS[0].test(r))}${flagTd(r.segel, DEFECTS[1].test(r))}${flagTd(r.penyok, DEFECTS[2].test(r))}${flagTd(r.label, DEFECTS[3].test(r))}
@@ -406,8 +415,8 @@
         const scoped = rows.filter(r => rak === 'ALL' || r.rak === rak);
         const ranged = scoped.filter(r => inRange(r, start, end));
 
-        $('pic-name').textContent = rak === 'ALL' ? '🌐 Summary Keseluruhan Gudang' : (rak.split(' - ')[1] || rak);
-        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : (rak.split(' - ')[0] || rak);$('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rak} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
+        $('pic-name').textContent = rak === 'ALL' ? '🌐 Summary Keseluruhan Gudang' : (picByRak[rak] || rak);
+        $('label-info-kpi').textContent = rak === 'ALL' ? 'Semua Rak' : rak;$('print-range').textContent = `Rak: ${rak === 'ALL' ? 'Semua' : rakLabel(rak)} | Periode: ${start || 'awal'} s/d ${end || 'sekarang'}`;
 
         $('total-inspeksi').textContent = scoped.length;
         const latest = sortDesc(scoped)[0];
@@ -610,17 +619,17 @@
                     const s = name ? stat[name] : null;
                     let fill = '#f1f5f9', stroke = '#cbd5e1', txt = '#94a3b8', dash = ' stroke-dasharray="4 3"', pctTxt = '', tip;
                     if (!name) tip = `${code} • belum ada PIC`;
-                    else if (!s) tip = `${name} • di luar filter rak`;
+                    else if (!s) tip = `${rakLabel(name)} • di luar filter rak`;
                     else {
                         dash = '';
                         if (s.ok === null) {
                             fill = pctColor(s.pct); stroke = fill; txt = s.pct >= 50 && s.pct < COMPLIANCE_TARGET ? '#422006' : '#ffffff';
                             pctTxt = s.pct + '%';
-                            tip = `${name}\n${s.done} dari ${dates.length} hari terlapor (${s.pct}%)`;
+                            tip = `${rakLabel(name)}\n${s.done} dari ${dates.length} hari terlapor (${s.pct}%)`;
                         } else {
                             fill = s.ok ? '#10b981' : '#fecaca'; stroke = s.ok ? '#059669' : '#fca5a5'; txt = s.ok ? '#ffffff' : '#7f1d1d';
                             pctTxt = s.ok ? '✓' : '✗';
-                            tip = `${name}\n${denahDate} • ${s.ok ? 'Sudah dicek' : 'Belum dicek'}`;
+                            tip = `${rakLabel(name)}\n${denahDate} • ${s.ok ? 'Sudah dicek' : 'Belum dicek'}`;
                         }
                     }
                     const idx = name && s ? clickable.push(name) - 1 : -1;
@@ -639,7 +648,7 @@
                     while (j + 1 < g.length && byCode[b.id + String(g[j + 1]).padStart(2, '0')] === nm) j++;
                     if (nm && stat[nm]) {
                         const cx = gx + i * (RW + PG) + ((j - i + 1) * RW + (j - i) * PG) / 2;
-                        let label = nm.replace(/^Rak\s+[A-D0-9 &]+-\s*/, '');
+                        let label = picByRak[nm] || '';
                         if (label.length > maxC) label = label.slice(0, maxC - 1) + '…';
                         const amber = stat[nm].ok === null && stat[nm].pct >= 50 && stat[nm].pct < COMPLIANCE_TARGET;
                         const ink = stat[nm].ok === false ? '#7f1d1d' : amber ? '#422006' : '#ffffff';
@@ -720,7 +729,7 @@
             tr.innerHTML = `
                 <td class="p-4 pl-6 text-center">${rankBadge}</td>
                 <td class="p-4 font-semibold text-slate-800 text-xs">
-                    <div class="flex items-center justify-between gap-2"><span>${esc(item.name)}</span>
+                    <div class="flex items-center justify-between gap-2"><span>${esc(rakLabel(item.name))}</span>
                     <span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold no-print">Klik Detail</span></div>
                 </td>
                 <td class="p-4 text-center font-bold text-blue-600">${item.count} Laporan</td>
@@ -742,7 +751,7 @@
         box.innerHTML = unchecked.length === 0
             ? `<div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-center font-medium">Luar biasa! Semua area sudah diinspeksi pada tanggal ini.</div>`
             : `<p class="text-xs font-bold text-red-600 mb-2">Total Area Belum di Inspeksi (${unchecked.length}):</p>
-               <ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">${unchecked.map(n => `<li><span class="font-semibold text-slate-900">${esc(n)}</span></li>`).join('')}</ul>`;
+               <ul class="space-y-1.5 pl-4 list-disc text-xs text-slate-700">${unchecked.map(n => `<li><span class="font-semibold text-slate-900">${esc(rakLabel(n))}</span></li>`).join('')}</ul>`;
     }
 
     function openModal({ title, sub, cols, body, wide }) {
@@ -769,13 +778,13 @@
         const { start, end } = getFilters();
         const list = sortDesc(rows.filter(r => r.rak === rakName && inRange(r, start, end)));
         openModal({
-            title: `Detail Laporan: ${rakName}`, sub: 'Riwayat inspeksi pada rentang tanggal terpilih',
+            title: `Detail Laporan: ${rakLabel(rakName)}`, sub: 'Riwayat inspeksi pada rentang tanggal terpilih',
             cols: HIST_COLS, wide: true,
             body: list.length ? list.map(r => histRow(r, false)).join('') : emptyRow(6, 'Tidak ada riwayat laporan untuk PIC ini pada rentang tanggal tersebut.')
         });
     }
     const defectRows = list => list.map(x => `<tr class="hover:bg-red-50/30 transition">
-        <td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(x.r.rak)}</td>
+        <td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(rakLabel(x.r.rak))}</td>
         <td class="p-3 font-medium whitespace-nowrap">${esc(x.r.ymd || disp(x.r.tanggal))}</td>
         <td class="p-3"><span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded">${esc(disp(x.r.shift))}</span></td>
         <td class="p-3 pr-6 text-red-600 font-semibold">${esc(x.issues.join(', '))}</td></tr>`).join('');
@@ -813,7 +822,7 @@
             const shifts = x.list.length ? [...new Set(x.list.map(r => disp(r.shift)))].join(', ') : '-';
             const issues = [...new Set(x.list.flatMap(r => issuesOf(r)))];
             const temuan = !x.list.length ? '-' : issues.length ? `<span class="text-red-600 font-semibold">${esc(issues.join(', '))}</span>` : '<span class="text-emerald-600">Sesuai standar</span>';
-            return `<tr class="hover:bg-slate-50 transition"><td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(x.n)}</td><td class="p-3">${status}</td><td class="p-3 text-xs">${esc(shifts)}</td><td class="p-3 pr-6 text-xs">${temuan}</td></tr>`;
+            return `<tr class="hover:bg-slate-50 transition"><td class="p-3 pl-6 font-semibold text-xs text-slate-700">${esc(rakLabel(x.n))}</td><td class="p-3">${status}</td><td class="p-3 text-xs">${esc(shifts)}</td><td class="p-3 pr-6 text-xs">${temuan}</td></tr>`;
         }).join('');
         const pct = names.length ? Math.round(done / names.length * 100) : 0;
         openModal({
@@ -828,7 +837,7 @@
         if (!list.length) { showMsg('Tidak ada data untuk diexport pada filter ini.', 'err'); return; }
         const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
         const lines = [['Rak / PIC', 'Tanggal', 'Shift', 'Pallet Rusak', 'Segel Baik', 'Produk Penyok', 'Label Baik'].map(cell).join(',')];
-        list.forEach(r => lines.push([r.rak, r.ymd || r.tanggal, r.shift, r.pallet, r.segel, r.penyok, r.label].map(cell).join(',')));
+        list.forEach(r => lines.push([rakLabel(r.rak), r.ymd || r.tanggal, r.shift, r.pallet, r.segel, r.penyok, r.label].map(cell).join(',')));
         const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
