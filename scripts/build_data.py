@@ -140,7 +140,7 @@ def build_rows(name, labels, rows):
             tgl = (r[0] if r and r[0] != "" else "-")
         if isinstance(tgl, datetime):
             tgl = tgl.strftime("%Y-%m-%d")
-        elif not DATE_OK.match(str(tgl).strip()) and i_ts not in (-1, i_tgl):
+        if not DATE_OK.match(str(tgl).strip()) and i_ts not in (-1, i_tgl):
             ts = pick(r, i_ts)               # tanggal kosong / format aneh (mis. "205-11-27")
             if ts not in ("", "-"):
                 tgl = ts.strftime("%Y-%m-%d") if isinstance(ts, datetime) else ts
