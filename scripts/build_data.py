@@ -110,7 +110,8 @@ def find_idx(header, keywords):
 DATE_OK = re.compile(r"^(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]\d{4})")
 
 
-MAX_SELISIH_HARI = 2   # tanggal pemeriksaan boleh lebih lama maks. 2 hari dari tanggal isi form
+MAX_SELISIH_HARI = 2    # selisih wajar tanggal pemeriksaan vs tanggal isi form (lewat tengah malam dst.)
+MAX_SUSULAN_HARI = 90   # laporan susulan lebih lama dari ini dianggap salah ketik tahun
 
 
 def to_date(v):
@@ -169,7 +170,20 @@ def build_rows(name, labels, rows):
         if i_ts not in (-1, i_tgl):
             td, sd = to_date(tgl), to_date(pick(r, i_ts))
             if td and sd and (td > sd or (sd - td).days > MAX_SELISIH_HARI):
-                tgl = sd.strftime("%Y-%m-%d")
+                # 1) mungkin hari & bulan tertukar (mis. 10/08 padahal 08/10)
+                fix = None
+                if td.day != td.month and td.day <= 12:
+                    try:
+                        sw = td.replace(month=td.day, day=td.month)
+                        if sw <= sd and (sd - sw).days <= MAX_SELISIH_HARI:
+                            fix = sw
+                    except ValueError:
+                        pass
+                # 2) laporan susulan yang wajar tetap memakai tanggal pemeriksaannya
+                if fix is None and td <= sd and (sd - td).days <= MAX_SUSULAN_HARI:
+                    fix = td
+                # 3) selain itu (tanggal masa depan / tahun salah) -> tanggal isi form
+                tgl = (fix or sd).strftime("%Y-%m-%d")
         vals = [pick(r, i_shift), pick(r, i_pallet), pick(r, i_segel),
                 pick(r, i_penyok), pick(r, i_label)]
         vals = [v.strftime("%Y-%m-%d %H:%M:%S") if isinstance(v, datetime) else v for v in vals]
