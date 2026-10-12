@@ -109,7 +109,12 @@ def find_idx(header, keywords):
 
 def build_rows(name, labels, rows):
     header = [str(h).lower().strip() for h in labels]
-    i_tgl = find_idx(header, ("tanggal", "date", "waktu", "timestamp"))
+    # Prioritaskan "Tanggal Pemeriksaan"; Timestamp (waktu isi form) hanya cadangan
+    i_tgl = -1
+    for kw in (("tanggal", "date"), ("waktu", "timestamp")):
+        i_tgl = find_idx(header, kw)
+        if i_tgl != -1:
+            break
     i_shift = find_idx(header, ("shift",))
     i_pallet = find_idx(header, ("pallet",))
     i_segel = find_idx(header, ("segel",))
