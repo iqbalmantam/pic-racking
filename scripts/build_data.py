@@ -110,6 +110,26 @@ def find_idx(header, keywords):
 DATE_OK = re.compile(r"^(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]\d{4})")
 
 
+MAX_SELISIH_HARI = 2   # tanggal pemeriksaan boleh lebih lama maks. 2 hari dari tanggal isi form
+
+
+def to_date(v):
+    """datetime / 'YYYY-MM-DD' / 'DD/MM/YYYY' -> date, atau None bila tidak terbaca."""
+    if isinstance(v, datetime):
+        return v.date()
+    t = str(v).strip()
+    try:
+        m = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})", t)
+        if m:
+            return datetime(int(m[1]), int(m[2]), int(m[3])).date()
+        m = re.match(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{4})", t)
+        if m:
+            return datetime(int(m[3]), int(m[2]), int(m[1])).date()
+    except ValueError:
+        pass
+    return None
+
+
 def build_rows(name, labels, rows):
     header = [str(h).lower().strip() for h in labels]
     # Prioritaskan "Tanggal Pemeriksaan"; Timestamp (waktu isi form) hanya cadangan
@@ -144,6 +164,12 @@ def build_rows(name, labels, rows):
             ts = pick(r, i_ts)               # tanggal kosong / format aneh (mis. "205-11-27")
             if ts not in ("", "-"):
                 tgl = ts.strftime("%Y-%m-%d") if isinstance(ts, datetime) else ts
+        # Tanggal pemeriksaan yang tidak masuk akal (lebih baru dari tanggal isi form, atau
+        # lebih lama dari MAX_SELISIH_HARI) dianggap salah ketik -> pakai tanggal Timestamp.
+        if i_ts not in (-1, i_tgl):
+            td, sd = to_date(tgl), to_date(pick(r, i_ts))
+            if td and sd and (td > sd or (sd - td).days > MAX_SELISIH_HARI):
+                tgl = sd.strftime("%Y-%m-%d")
         vals = [pick(r, i_shift), pick(r, i_pallet), pick(r, i_segel),
                 pick(r, i_penyok), pick(r, i_label)]
         vals = [v.strftime("%Y-%m-%d %H:%M:%S") if isinstance(v, datetime) else v for v in vals]
