@@ -107,6 +107,9 @@ def find_idx(header, keywords):
     return -1
 
 
+DATE_OK = re.compile(r"^(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]\d{4})")
+
+
 def build_rows(name, labels, rows):
     header = [str(h).lower().strip() for h in labels]
     # Prioritaskan "Tanggal Pemeriksaan"; Timestamp (waktu isi form) hanya cadangan
@@ -115,6 +118,7 @@ def build_rows(name, labels, rows):
         i_tgl = find_idx(header, kw)
         if i_tgl != -1:
             break
+    i_ts = find_idx(header, ("timestamp", "waktu"))   # cadangan bila tanggal kosong/salah ketik
     i_shift = find_idx(header, ("shift",))
     i_pallet = find_idx(header, ("pallet",))
     i_segel = find_idx(header, ("segel",))
@@ -136,6 +140,10 @@ def build_rows(name, labels, rows):
             tgl = (r[0] if r and r[0] != "" else "-")
         if isinstance(tgl, datetime):
             tgl = tgl.strftime("%Y-%m-%d")
+        elif not DATE_OK.match(str(tgl).strip()) and i_ts not in (-1, i_tgl):
+            ts = pick(r, i_ts)               # tanggal kosong / format aneh (mis. "205-11-27")
+            if ts not in ("", "-"):
+                tgl = ts.strftime("%Y-%m-%d") if isinstance(ts, datetime) else ts
         vals = [pick(r, i_shift), pick(r, i_pallet), pick(r, i_segel),
                 pick(r, i_penyok), pick(r, i_label)]
         vals = [v.strftime("%Y-%m-%d %H:%M:%S") if isinstance(v, datetime) else v for v in vals]
